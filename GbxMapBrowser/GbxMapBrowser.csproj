@@ -1,8 +1,8 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
 		<OutputType>WinExe</OutputType>
-		<TargetFramework>net8.0-windows7.0</TargetFramework>
+		<TargetFramework>net10.0-windows</TargetFramework>
 		<SelfContained>true</SelfContained>
 		<UseWPF>true</UseWPF>
 		<ApplicationIcon>icon.ico</ApplicationIcon>
@@ -45,11 +45,11 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<PackageReference Include="GBX.NET" Version="2.0.2" />
-		<PackageReference Include="GBX.NET.LZO" Version="2.0.0" />
-		<PackageReference Include="MahApps.Metro" Version="2.4.9" />
-		<PackageReference Include="Octokit" Version="0.50.0" />
-		<PackageReference Include="System.Drawing.Common" Version="8.0.5" />
+		<PackageReference Include="GBX.NET" Version="2.3.4" />
+		<PackageReference Include="GBX.NET.LZO" Version="2.1.4" />
+		<PackageReference Include="MahApps.Metro" Version="2.4.11" />
+		<PackageReference Include="Octokit" Version="14.0.0" />
+		<PackageReference Include="System.Drawing.Common" Version="10.0.5" />
 	</ItemGroup>
 
 	<ItemGroup>
