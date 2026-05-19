@@ -349,3 +349,19 @@ MigrationBackup/
 # Ionide (cross platform F# VS Code tools) working folder
 .ionide/
 /GbxMapBrowser/Properties/launchSettings.json
+
+
+# Local Trackmania PB scanner/generated data
+TrackmaniaPbScanner/personal-bests*.json
+TrackmaniaPbScanner/personal-bests*.csv
+TrackmaniaPbScanner/final-results*.json
+TrackmaniaPbScanner/final-results*.csv
+TrackmaniaPbScanner/scan-results.json
+TrackmaniaPbScanner/Maps/
+GbxMapBrowser/trackmania-records*.json
+
+# Local app settings
+GbxMapBrowser/config/
+
+# Local prototype/test scanner
+TrackmaniaPbScanner/

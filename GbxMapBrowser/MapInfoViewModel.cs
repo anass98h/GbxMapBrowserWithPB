@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
+using GbxMapBrowser.Models.TrackmaniaRecords;
 
 namespace GbxMapBrowser
 {
@@ -171,5 +172,21 @@ namespace GbxMapBrowser
             }
             return [.. maps];
         }
+
+    public void ApplyTrackmaniaRecords(IReadOnlyDictionary<string, TrackmaniaMapRecord> recordsByUid)
+    {
+        if (recordsByUid == null) return;
+
+        foreach (MapInfo mapInfo in mapInfosList)
+        {
+            if (string.IsNullOrWhiteSpace(mapInfo.MapUid)) continue;
+
+            if (recordsByUid.TryGetValue(mapInfo.MapUid, out TrackmaniaMapRecord record))
+            {
+                mapInfo.ApplyTrackmaniaRecord(record);
+            }
+        }
+    }
+
     }
 }

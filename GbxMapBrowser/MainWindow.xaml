@@ -60,6 +60,8 @@
                                         <ColumnDefinition />
                                         <ColumnDefinition Width="80"/>
                                         <ColumnDefinition Width="90"/>
+                                        <ColumnDefinition Width="90"/>
+                                        <ColumnDefinition Width="90"/>
                                         <ColumnDefinition Width="158"/>
                                     </Grid.ColumnDefinitions>
                                     <Image Source="{Binding ImageSmall}" Width="50"></Image>
@@ -75,13 +77,17 @@
                                         <ColumnDefinition />
                                         <ColumnDefinition Width="80"/>
                                         <ColumnDefinition Width="90"/>
+                                        <ColumnDefinition Width="90"/>
+                                        <ColumnDefinition Width="90"/>          
                                         <ColumnDefinition Width="158"/>
                                     </Grid.ColumnDefinitions>
                                     <Image Source="{Binding ImageSmall}" Grid.Column="0" Margin="5"/>
                                     <Label Style="{StaticResource DefaultUIStyle}" Content="{Binding DisplayName}" Grid.Column="1" Margin="5"/>
                                     <Label Style="{StaticResource DefaultUIStyle}" Grid.Column="2" Content="{Binding SizeString}" Margin="5"/>
                                     <Label Style="{StaticResource DigitalTimeStyle}" Content="{Binding ObjectiveGold}" Grid.Column="3" Margin="5"/>
-                                    <Label Style="{StaticResource DefaultUIStyle}" Content="{Binding DateModifiedString}" Grid.Column="4" Margin="5"/>
+                                    <Label Style="{StaticResource DigitalTimeStyle}" Content="{Binding PersonalBest}" Grid.Column="4" Margin="5"/>
+                                    <Label Style="{StaticResource DefaultUIStyle}" Content="{Binding Medal}" Grid.Column="5" Margin="5"/>
+                                    <Label Style="{StaticResource DefaultUIStyle}" Content="{Binding DateModifiedString}" Grid.Column="6" Margin="5"/>
                                 </Grid>
                             </DataTemplate>
                         </ListBox.Resources>

@@ -9,6 +9,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using GbxMapBrowser.Models.TrackmaniaRecords;
 
 namespace GbxMapBrowser
 {
@@ -26,6 +27,9 @@ namespace GbxMapBrowser
         public string ObjectiveAuthor { get; private set; }
         public ImageSource MapThumbnail { get; private set; }
         public bool IsWorking { get; }
+        public string MapUid { get; private set; }
+        public string PersonalBest { get; private set; }
+        public string Medal { get; private set; }
 
         private readonly string _shortName;
 
@@ -53,6 +57,7 @@ namespace GbxMapBrowser
 
             if (gbx is CGameCtnChallenge challenge)
             {
+                MapUid = GetStringProperty(challenge, "MapUid", "Uid");
                 DisplayName = Utils.ToReadableText(challenge.MapName);
                 OriginalName = challenge.MapName;
                 Titlepack = challenge.TitleId;
@@ -221,5 +226,33 @@ namespace GbxMapBrowser
             gameGbx.StartInfo = gameGbxStartInfo;
             gameGbx.Start();
         }
+    public void ApplyTrackmaniaRecord(TrackmaniaMapRecord record)
+    {
+        if (record == null) return;
+
+        PersonalBest = record.PersonalBest ?? "";
+        Medal = record.Medal ?? "";
+    }
+
+    private static string GetStringProperty(object source, params string[] propertyNames)
+    {
+        if (source == null) return "";
+
+        Type sourceType = source.GetType();
+
+        foreach (string propertyName in propertyNames)
+        {
+            var property = sourceType.GetProperty(propertyName);
+
+            if (property == null) continue;
+
+            object value = property.GetValue(source);
+
+            return value?.ToString() ?? "";
+        }
+
+        return "";
+    }
+
     }
 }

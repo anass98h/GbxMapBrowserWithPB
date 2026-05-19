@@ -6,6 +6,9 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using GbxMapBrowser.Services.TrackmaniaRecords;
+using GbxMapBrowser.Models.TrackmaniaRecords;
+using System.Linq;
 
 namespace GbxMapBrowser
 {
@@ -17,8 +20,12 @@ namespace GbxMapBrowser
         private string _curFolder = "";
         private readonly MapInfoViewModel _mapInfoViewModel = new();
         private readonly GbxGameViewModel _gbxGameViewModel = new();
+
+        private readonly TrackmaniaRecordImportService _trackmaniaRecordImportService = new(new TrackmaniaRecordDatabase());
         private readonly SearchOption _searchOption;
         private readonly List<FolderAndFileInfo> _selectedItems = [];
+
+
 
         #region Initialization
         public MainWindow()
@@ -131,17 +138,35 @@ namespace GbxMapBrowser
             UpdateMapPreview(null);
             _mapInfoViewModel.ClearMapList();
 
+            Dictionary<string, TrackmaniaMapRecord> trackmaniaRecordsByUid = [];
+
+            try
+            {
+                await Task.Run(() => _trackmaniaRecordImportService.Refresh(mapsFolder));
+
+                trackmaniaRecordsByUid = await Task.Run(() =>
+                    _trackmaniaRecordImportService
+                        .GetAllRecords()
+                        .Where(record => !string.IsNullOrWhiteSpace(record.MapUid))
+                        .GroupBy(record => record.MapUid)
+                        .ToDictionary(group => group.Key, group => group.First())
+                );
+            }
+            catch
+            {
+                // Do not block the app if PB import fails.
+            }
+
             //update enabled/disabled navigation buttons
             undoButton.IsEnabled = HistoryManager.CanUndo;
             redoButton.IsEnabled = HistoryManager.CanRedo;
-
 
             Application.Current.Dispatcher.Invoke(() =>
             {
                 mapListBox.ItemsSource = null;
                 currentFolderTextBox.Text = mapsFolder;
-            }
-            );
+            });
+
             string[] folders = await Task.Run(() => FileOperations.TryGetFolders(mapsFolder));
             var mapFiles = await Task.Run(() => FileOperations.TryGetMapPaths(mapsFolder, _searchOption));
             int i = 0;
@@ -151,11 +176,14 @@ namespace GbxMapBrowser
                 await _mapInfoViewModel.AddFolderAsync(folderPath);
                 i++;
             }
+
             foreach (string mapPath in mapFiles)
             {
                 await _mapInfoViewModel.AddMapAsync(mapPath);
                 i++;
             }
+
+            _mapInfoViewModel.ApplyTrackmaniaRecords(trackmaniaRecordsByUid);
 
             await _mapInfoViewModel.SortMapListAsync();
 
@@ -164,8 +192,6 @@ namespace GbxMapBrowser
 
             mapListBox.Items.Refresh();
             _mapInfoViewModel.IsLoading = false;
-
-
         }
         #endregion
 
