@@ -191,11 +191,79 @@ namespace GbxMapBrowser
             sortMapsComboBox.Text = Sorting.Kinds[(int)_mapInfoViewModel.SortKind];
 
             mapListBox.Items.Refresh();
+            UpdatePbStatsLabel();
             _mapInfoViewModel.IsLoading = false;
         }
         #endregion
 
         #region AdressBarButtonsEvents
+
+        private async void RefreshPbDatabaseButton_Click(object sender, RoutedEventArgs e)
+        {
+            refreshPbDatabaseButton.IsEnabled = false;
+            pbStatsLabel.Content = "PB cache: refreshing...";
+
+            try
+            {
+                TrackmaniaRecordImportResult result = await Task.Run(() =>
+                    _trackmaniaRecordImportService.Refresh(_curFolder)
+                );
+
+                Dictionary<string, TrackmaniaMapRecord> recordsByUid = await Task.Run(() =>
+                    _trackmaniaRecordImportService
+                        .GetAllRecords()
+                        .Where(record => !string.IsNullOrWhiteSpace(record.MapUid))
+                        .GroupBy(record => record.MapUid)
+                        .ToDictionary(group => group.Key, group => group.First())
+                );
+
+                _mapInfoViewModel.ApplyTrackmaniaRecords(recordsByUid);
+                mapListBox.Items.Refresh();
+
+                UpdatePbStatsLabel();
+
+                pbStatsLabel.Content =
+                    $"PB cache: {result.TotalRecords} maps | Replays: {result.ImportedReplayCount} | Maps: {result.ImportedMapCount}";
+            }
+            catch (Exception ex)
+            {
+                pbStatsLabel.Content = "PB cache: refresh failed";
+
+                MessageBox.Show(
+                    ex.Message,
+                    "PB database refresh failed",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning
+                );
+            }
+            finally
+            {
+                refreshPbDatabaseButton.IsEnabled = true;
+            }
+        }
+
+        private void UpdatePbStatsLabel()
+        {
+            try
+            {
+                var records = _trackmaniaRecordImportService.GetAllRecords();
+
+                int cachedMaps = records.Count;
+                int withPersonalBest = records.Count(record => record.PersonalBestMs is not null);
+                int withMapFile = records.Count(record => record.HasSeenMapFile);
+                int knownMedals = records.Count(record =>
+                    !string.Equals(record.Medal, "Unknown", StringComparison.OrdinalIgnoreCase)
+                );
+
+                pbStatsLabel.Content =
+                    $"PB cache: {cachedMaps} maps | PBs: {withPersonalBest} | Medals: {knownMedals} | Map files: {withMapFile}";
+            }
+            catch
+            {
+                pbStatsLabel.Content = "PB cache: unavailable";
+            }
+        }
+
         private async void RefreshMapsButton_Click(object sender, RoutedEventArgs e)
         {
             await UpdateMapListAsync(_curFolder);

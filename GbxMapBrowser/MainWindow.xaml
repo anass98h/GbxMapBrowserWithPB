@@ -79,17 +79,16 @@
                                 <Grid>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="50"/>
-                                        <ColumnDefinition />
-                                        <ColumnDefinition Width="80"/>
+                                        <ColumnDefinition Width="300"/>
                                         <ColumnDefinition Width="90"/>
                                         <ColumnDefinition Width="90"/>
                                         <ColumnDefinition Width="90"/>
                                         <ColumnDefinition Width="158"/>
                                     </Grid.ColumnDefinitions>
-                                    <Image Source="{Binding ImageSmall}" Width="50"></Image>
-                                    <Label Style="{StaticResource DefaultUIStyle}" Grid.Column="1" Content="{Binding DisplayName}" Margin="5"/>
-                                    <Label Style="{StaticResource DefaultUIStyle}" Grid.Column="2" Content="{Binding SizeString}" Margin="5"/>
-                                    <Label Style="{StaticResource DefaultUIStyle}" Grid.Column="4" Content="{Binding DateModifiedString}" Margin="5"/>
+
+                                    <Image Source="{Binding ImageSmall}" Grid.Column="0" Width="50"/>
+                                    <Label Style="{StaticResource DefaultUIStyle}" Content="{Binding DisplayName}" Grid.Column="1" Margin="5"/>
+                                    <Label Style="{StaticResource DefaultUIStyle}" Content="{Binding DateModifiedString}" Grid.Column="5" Margin="5"/>
                                 </Grid>
                             </DataTemplate>
 
@@ -103,6 +102,7 @@
                                         <ColumnDefinition Width="90"/>
                                         <ColumnDefinition Width="158"/>
                                     </Grid.ColumnDefinitions>
+
                                     <Image Source="{Binding ImageSmall}" Grid.Column="0" Margin="5"/>
                                     <Label Style="{StaticResource DefaultUIStyle}" Content="{Binding DisplayName}" Grid.Column="1" Margin="5"/>
                                     <Label Style="{StaticResource DigitalTimeStyle}" Content="{Binding ObjectiveGold}" Grid.Column="2" Margin="5"/>
@@ -118,14 +118,58 @@
                             <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition/>
                             <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
-                        <Rectangle Fill="{DynamicResource MahApps.Brushes.Badged.Background.Disabled}" Grid.Row="1" Height="1" Grid.ColumnSpan="3" VerticalAlignment="Top" Panel.ZIndex="10"/>
-                        <Label Grid.Column="0" Content="🔎" BorderThickness="0" VerticalContentAlignment="Center" FontSize="15"/>
-                        <TextBox x:Name="searchMapsTextBox" Grid.Column="1" Text="search for a map..." Opacity=".5" BorderThickness="0" VerticalContentAlignment="Center" FontSize="15" TextChanged="SearchMapsTextBox_TextChanged" GotFocus="SearchMapsTextBox_GotFocus" LostFocus="SearchMapsTextBox_LostFocus"/>
-                        <ComboBox x:Name="sortMapsComboBox" Grid.Column="2" SelectionChanged="SortMapsComboBox_SelectionChanged" Width="150" BorderBrush="#7FCCCCCC">
+
+                        <Rectangle Fill="{DynamicResource MahApps.Brushes.Badged.Background.Disabled}"
+                                   Grid.Row="1"
+                                   Height="1"
+                                   Grid.ColumnSpan="5"
+                                   VerticalAlignment="Top"
+                                   Panel.ZIndex="10"/>
+
+                        <Label Grid.Column="0"
+                               Content="🔎"
+                               BorderThickness="0"
+                               VerticalContentAlignment="Center"
+                               FontSize="15"/>
+
+                        <TextBox x:Name="searchMapsTextBox"
+                                 Grid.Column="1"
+                                 Text="search for a map..."
+                                 Opacity=".5"
+                                 BorderThickness="0"
+                                 VerticalContentAlignment="Center"
+                                 FontSize="15"
+                                 TextChanged="SearchMapsTextBox_TextChanged"
+                                 GotFocus="SearchMapsTextBox_GotFocus"
+                                 LostFocus="SearchMapsTextBox_LostFocus"/>
+
+                        <Label x:Name="pbStatsLabel"
+                               Grid.Column="2"
+                               Content="PB cache: -"
+                               Style="{StaticResource DefaultUIStyle}"
+                               VerticalContentAlignment="Center"
+                               Margin="5 0"/>
+
+                        <Button x:Name="refreshPbDatabaseButton"
+                                Grid.Column="3"
+                                Content="Refresh PB"
+                                Click="RefreshPbDatabaseButton_Click"
+                                Height="24"
+                                Margin="5 2"
+                                Padding="8 0"
+                                Style="{StaticResource StandardButtonStyle}"/>
+
+                        <ComboBox x:Name="sortMapsComboBox"
+                                  Grid.Column="4"
+                                  SelectionChanged="SortMapsComboBox_SelectionChanged"
+                                  Width="150"
+                                  BorderBrush="#7FCCCCCC">
                             <ComboBox.ItemTemplate>
                                 <DataTemplate>
-                                    <Label Style="{StaticResource DefaultUIStyle}"  Content="{Binding .}" />
+                                    <Label Style="{StaticResource DefaultUIStyle}" Content="{Binding .}" />
                                 </DataTemplate>
                             </ComboBox.ItemTemplate>
                         </ComboBox>
