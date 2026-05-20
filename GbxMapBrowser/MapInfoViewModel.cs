@@ -39,7 +39,7 @@ namespace GbxMapBrowser
                 return mapList.AsReadOnly();
             }
         }
-        public Sorting.Kind SortKind { get; set; } = GbxMapBrowser.Sorting.Kind.ByNameAscending;
+        public Sorting.Kind SortKind { get; set; } = GbxMapBrowser.Sorting.Kind.ByMedalAscending;
 
 
         private readonly List<FolderInfo> folderInfosList = [];
@@ -149,6 +149,18 @@ namespace GbxMapBrowser
                                                             orderby map.ObjectiveGold descending
                                                             select map));
                     break;
+                case Sorting.Kind.ByMedalAscending:
+                    orderedMapInfos = await Task.Run(() => (from map in mapInfosList
+                                                            orderby GetMedalSortRank(map) ascending,
+                                                                    map.DisplayName ascending
+                                                            select map));
+                    break;
+                case Sorting.Kind.ByMedalDescending:
+                    orderedMapInfos = await Task.Run(() => (from map in mapInfosList
+                                                            orderby GetMedalSortRank(map) descending,
+                                                                    map.DisplayName ascending
+                                                            select map));
+                    break;
             }
 
             orderedFolderInfos ??= await Task.Run(() => from folder in folderInfosList
@@ -159,6 +171,23 @@ namespace GbxMapBrowser
             await Task.Run(() => mapList.AddRange(orderedFolderInfos));
             await Task.Delay(2);
             await Task.Run(() => mapList.AddRange(orderedMapInfos));
+        }
+
+        private static int GetMedalSortRank(MapInfo map)
+        {
+            if (map == null || string.IsNullOrWhiteSpace(map.Medal))
+            {
+                return 0;
+            }
+
+            return map.Medal.Trim().ToLowerInvariant() switch
+            {
+                "bronze" => 1,
+                "silver" => 2,
+                "gold" => 3,
+                "author" => 4,
+                _ => 0
+            };
         }
 
         public MapInfo[] GetMapsByName(string[] mapNames)

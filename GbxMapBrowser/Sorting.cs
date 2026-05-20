@@ -17,11 +17,42 @@
             BySizeDescending,
 
             ByLengthAscending,
-            ByLengthDescending
+            ByLengthDescending,
+
+            ByMedalAscending,
+            ByMedalDescending
         }
 
-        public static string[] Kinds { get; } = ["Name ⬆️", "Name ⬇️", "Date ⬆️", "Date ⬇️", "Titlepack ⬆️", "Titlepack ⬇️", "Size ⬆️", "Size ⬇️", "Length ⬆️", "Length ⬇️"];
-        public static string[] KindsShort { get; } = ["NA", "ND", "DMA", "DMD", "TPA", "TPD", "SA", "SD", "LA", "LD"];
+        public static string[] Kinds { get; } =
+        [
+            "Name ⬆️",
+            "Name ⬇️",
+            "Date ⬆️",
+            "Date ⬇️",
+            "Titlepack ⬆️",
+            "Titlepack ⬇️",
+            "Size ⬆️",
+            "Size ⬇️",
+            "Length ⬆️",
+            "Length ⬇️",
+            "Medal ⬆️",
+            "Medal ⬇️"
+        ];
 
+        public static string[] KindsShort { get; } =
+        [
+            "NA",
+            "ND",
+            "DMA",
+            "DMD",
+            "TPA",
+            "TPD",
+            "SA",
+            "SD",
+            "LA",
+            "LD",
+            "MA",
+            "MD"
+        ];
     }
 }
