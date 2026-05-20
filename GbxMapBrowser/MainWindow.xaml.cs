@@ -2,13 +2,13 @@
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
-using GbxMapBrowser.Services.TrackmaniaRecords;
 using GbxMapBrowser.Models.TrackmaniaRecords;
-using System.Linq;
+using GbxMapBrowser.Services.TrackmaniaRecords;
 
 namespace GbxMapBrowser
 {
@@ -30,7 +30,7 @@ namespace GbxMapBrowser
         #region Initialization
         public MainWindow()
         {
-            _curFolder = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+            _curFolder = LoadDefaultMapFolder();
             _searchOption = SearchOption.TopDirectoryOnly;
             InitializeComponent();
             LoadGbxGameList();
@@ -70,6 +70,57 @@ namespace GbxMapBrowser
             HistoryManager.UpdateListUI += HistoryManager_UpdateListUI;
         }
         #endregion
+
+        private static string GetDefaultMapFolderSettingsPath()
+        {
+            string localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+
+            return Path.Combine(
+                localAppData,
+                "GbxMapBrowser",
+                "default-map-folder.txt"
+            );
+        }
+
+        private static string LoadDefaultMapFolder()
+        {
+            string fallbackFolder = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+            string settingsPath = GetDefaultMapFolderSettingsPath();
+
+            try
+            {
+                if (!File.Exists(settingsPath))
+                {
+                    return fallbackFolder;
+                }
+
+                string savedFolder = File.ReadAllText(settingsPath).Trim();
+
+                if (Directory.Exists(savedFolder))
+                {
+                    return savedFolder;
+                }
+            }
+            catch
+            {
+                // Fall back to Documents if the saved folder cannot be loaded.
+            }
+
+            return fallbackFolder;
+        }
+
+        private static void SaveDefaultMapFolder(string folder)
+        {
+            string settingsPath = GetDefaultMapFolderSettingsPath();
+            string settingsDirectory = Path.GetDirectoryName(settingsPath);
+
+            if (!string.IsNullOrWhiteSpace(settingsDirectory))
+            {
+                Directory.CreateDirectory(settingsDirectory);
+            }
+
+            File.WriteAllText(settingsPath, folder);
+        }
 
         #region HistoryManager
         private void HistoryManager_UpdateListUI(object sender, EventArgs e)
@@ -262,6 +313,59 @@ namespace GbxMapBrowser
             {
                 pbStatsLabel.Content = "PB cache: unavailable";
             }
+        }
+
+        private async void GoDefaultFolderButton_Click(object sender, RoutedEventArgs e)
+        {
+            string defaultFolder = LoadDefaultMapFolder();
+
+            if (!Directory.Exists(defaultFolder))
+            {
+                MessageBox.Show(
+                    "The saved default folder no longer exists:\n\n" + defaultFolder,
+                    "Default folder not found",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning
+                );
+
+                return;
+            }
+
+            _curFolder = defaultFolder;
+
+            await UpdateMapListAsync(_curFolder);
+            HistoryManager.AddToHistory(_curFolder);
+        }
+
+        private async void SetDefaultFolderButton_Click(object sender, RoutedEventArgs e)
+        {
+            string folder = currentFolderTextBox.Text.Trim();
+
+            if (!Directory.Exists(folder))
+            {
+                MessageBox.Show(
+                    "This folder does not exist:\n\n" + folder,
+                    "Invalid default folder",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning
+                );
+
+                return;
+            }
+
+            SaveDefaultMapFolder(folder);
+
+            _curFolder = folder;
+
+            await UpdateMapListAsync(_curFolder);
+            HistoryManager.AddToHistory(_curFolder);
+
+            MessageBox.Show(
+                "Default map folder saved:\n\n" + folder,
+                "Default folder saved",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information
+            );
         }
 
         private async void RefreshMapsButton_Click(object sender, RoutedEventArgs e)

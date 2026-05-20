@@ -24,20 +24,81 @@
                 <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
+
             <Grid.RowDefinitions>
                 <RowDefinition Height="*"/>
                 <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
+
             <StackPanel Orientation="Horizontal">
-                <Button Style="{StaticResource AddressButtonStyle}" FontFamily="{StaticResource Segoe MDL2 Assets}" x:Name="undoButton" Content="&#xE830;" Click="UndoButton_Click"/>
-                <Button Style="{StaticResource AddressButtonStyle}" FontFamily="{StaticResource Segoe MDL2 Assets}" x:Name="redoButton" Content="&#xEA47;" Click="RedoButton_Click"/>
-                <Button Style="{StaticResource AddressButtonStyle}" FontFamily="{StaticResource Segoe MDL2 Assets}" x:Name="parentFolderButton" Content="&#xE7EB;" Click="ParentFolderButton_Click"/>
+                <Button Style="{StaticResource AddressButtonStyle}"
+                        FontFamily="{StaticResource Segoe MDL2 Assets}"
+                        x:Name="undoButton"
+                        Content="&#xE830;"
+                        Click="UndoButton_Click"/>
+
+                <Button Style="{StaticResource AddressButtonStyle}"
+                        FontFamily="{StaticResource Segoe MDL2 Assets}"
+                        x:Name="redoButton"
+                        Content="&#xEA47;"
+                        Click="RedoButton_Click"/>
+
+                <Button Style="{StaticResource AddressButtonStyle}"
+                        FontFamily="{StaticResource Segoe MDL2 Assets}"
+                        x:Name="parentFolderButton"
+                        Content="&#xE7EB;"
+                        Click="ParentFolderButton_Click"/>
             </StackPanel>
-            <TextBox x:Name="currentFolderTextBox" FontSize="16" BorderThickness="0" Margin="0 0" Grid.Column="1" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Center" KeyUp="CurrentFolderTextBox_KeyUp"/>
-            <Button Style="{StaticResource AddressButtonStyle}" FontFamily="{StaticResource Segoe MDL2 Assets}" x:Name="refreshMapsButton" Grid.Column="3" HorizontalAlignment="Center" Content="&#xE72C;" Click="RefreshMapsButton_Click"/>
-            <Button Style="{StaticResource AddressButtonStyle}" FontFamily="{StaticResource Segoe MDL2 Assets}" x:Name="OpenInExplorerButton" Grid.Column="4" HorizontalAlignment="Center" Content="&#xED44;" Click="OpenInExplorerButton_Click"/>
-            <Rectangle Fill="{DynamicResource MahApps.Brushes.Badged.Background.Disabled}" Grid.Row="1" Height="1" Grid.ColumnSpan="5"/>
+
+            <TextBox x:Name="currentFolderTextBox"
+                     Grid.Column="1"
+                     FontSize="16"
+                     BorderThickness="0"
+                     Margin="0 0"
+                     HorizontalContentAlignment="Stretch"
+                     VerticalContentAlignment="Center"
+                     KeyUp="CurrentFolderTextBox_KeyUp"/>
+
+            <Button x:Name="goDefaultFolderButton"
+                    Grid.Column="2"
+                    Content="Home"
+                    Click="GoDefaultFolderButton_Click"
+                    Height="26"
+                    Margin="4 1"
+                    Padding="8 0"
+                    Style="{StaticResource StandardButtonStyle}"/>
+
+            <Button x:Name="setDefaultFolderButton"
+                    Grid.Column="3"
+                    Content="Set default"
+                    Click="SetDefaultFolderButton_Click"
+                    Height="26"
+                    Margin="4 1"
+                    Padding="8 0"
+                    Style="{StaticResource StandardButtonStyle}"/>
+
+            <Button Style="{StaticResource AddressButtonStyle}"
+                    FontFamily="{StaticResource Segoe MDL2 Assets}"
+                    x:Name="refreshMapsButton"
+                    Grid.Column="4"
+                    HorizontalAlignment="Center"
+                    Content="&#xE72C;"
+                    Click="RefreshMapsButton_Click"/>
+
+            <Button Style="{StaticResource AddressButtonStyle}"
+                    FontFamily="{StaticResource Segoe MDL2 Assets}"
+                    x:Name="OpenInExplorerButton"
+                    Grid.Column="5"
+                    HorizontalAlignment="Center"
+                    Content="&#xED44;"
+                    Click="OpenInExplorerButton_Click"/>
+
+            <Rectangle Fill="{DynamicResource MahApps.Brushes.Badged.Background.Disabled}"
+                       Grid.Row="1"
+                       Height="1"
+                       Grid.ColumnSpan="6"/>
         </Grid>
         <Button Grid.Row="1" Panel.ZIndex="10" Width="48" Height="48" Style="{StaticResource AddressButtonStyle}" FontFamily="{StaticResource SegoeUISymbol}" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="0" Click="ManageGamesButton_Click" Padding="-5" FontSize="35">⛭</Button>
         <mah:HamburgerMenu Grid.Row="1" ItemsSource="{Binding GbxGames}" Panel.ZIndex="5" x:Name="gamesListMenu" ItemClick="GamesListMenu_ItemClick" HamburgerButtonName="Maps" HamburgerWidth="48" HamburgerButtonHelpText="Maps" Foreground="{DynamicResource MahApps.Brushes.Text}">
