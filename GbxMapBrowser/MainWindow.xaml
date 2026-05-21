@@ -100,7 +100,46 @@
                        Height="1"
                        Grid.ColumnSpan="6"/>
         </Grid>
-        <Button Grid.Row="1" Panel.ZIndex="10" Width="48" Height="48" Style="{StaticResource AddressButtonStyle}" FontFamily="{StaticResource SegoeUISymbol}" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="0" Click="ManageGamesButton_Click" Padding="-5" FontSize="35">⛭</Button>
+        <Button x:Name="detectOnlineTimesButton"
+                Grid.Row="1"
+                Panel.ZIndex="10"
+                Width="48"
+                Height="48"
+                Style="{StaticResource AddressButtonStyle}"
+                FontFamily="Segoe UI Emoji"
+                HorizontalAlignment="Left"
+                VerticalAlignment="Bottom"
+                Margin="0 0 0 96"
+                Click="DetectOnlineTimesButton_Click"
+                Padding="-5"
+                FontSize="24"
+                ToolTip="Detect times from Trackmania server">🌐</Button>
+        <Button Grid.Row="1"
+                Panel.ZIndex="10"
+                Width="48"
+                Height="48"
+                Style="{StaticResource AddressButtonStyle}"
+                FontFamily="{StaticResource SegoeUISymbol}"
+                HorizontalAlignment="Left"
+                VerticalAlignment="Bottom"
+                Margin="0 0 0 48"
+                Click="MoveDownloadedMapsButton_Click"
+                Padding="-5"
+                FontSize="28"
+                ToolTip="Move downloaded maps to default folder">⇩</Button>
+
+        <Button Grid.Row="1"
+                Panel.ZIndex="10"
+                Width="48"
+                Height="48"
+                Style="{StaticResource AddressButtonStyle}"
+                FontFamily="{StaticResource SegoeUISymbol}"
+                HorizontalAlignment="Left"
+                VerticalAlignment="Bottom"
+                Margin="0"
+                Click="ManageGamesButton_Click"
+                Padding="-5"
+                FontSize="35">⛭</Button>
         <mah:HamburgerMenu Grid.Row="1" ItemsSource="{Binding GbxGames}" Panel.ZIndex="5" x:Name="gamesListMenu" ItemClick="GamesListMenu_ItemClick" HamburgerButtonName="Maps" HamburgerWidth="48" HamburgerButtonHelpText="Maps" Foreground="{DynamicResource MahApps.Brushes.Text}">
             <mah:HamburgerMenu.Content>
                 <!--Map list, the right part-->

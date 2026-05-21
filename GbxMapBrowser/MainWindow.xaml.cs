@@ -9,6 +9,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using GbxMapBrowser.Models.TrackmaniaRecords;
 using GbxMapBrowser.Services.TrackmaniaRecords;
+using GbxMapBrowser.Windows;
 
 namespace GbxMapBrowser
 {
@@ -122,6 +123,41 @@ namespace GbxMapBrowser
             File.WriteAllText(settingsPath, folder);
         }
 
+        private static string GetDownloadsFolder()
+        {
+            string userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+
+            return Path.Combine(userProfile, "Downloads");
+        }
+
+        private static string GetAvailableDestinationPath(string destinationFolder, string fileName)
+        {
+            string destinationPath = Path.Combine(destinationFolder, fileName);
+
+            if (!File.Exists(destinationPath))
+            {
+                return destinationPath;
+            }
+
+            string nameWithoutExtension = Path.GetFileNameWithoutExtension(fileName);
+            string extension = Path.GetExtension(fileName);
+
+            int copyNumber = 1;
+
+            while (true)
+            {
+                string newFileName = $"{nameWithoutExtension} ({copyNumber}){extension}";
+                string newDestinationPath = Path.Combine(destinationFolder, newFileName);
+
+                if (!File.Exists(newDestinationPath))
+                {
+                    return newDestinationPath;
+                }
+
+                copyNumber++;
+            }
+        }
+
         #region HistoryManager
         private void HistoryManager_UpdateListUI(object sender, EventArgs e)
         {
@@ -154,6 +190,134 @@ namespace GbxMapBrowser
         private void ManageGamesButton_Click(object sender, RoutedEventArgs e)
         {
             ShowGbxGamesWindow();
+        }
+
+
+        private void DetectOnlineTimesButton_Click(object sender, RoutedEventArgs e)
+        {
+            TrackmaniaAccountIdWindow window = new()
+            {
+                Owner = this
+            };
+
+            window.ShowDialog();
+        }
+
+        private async void MoveDownloadedMapsButton_Click(object sender, RoutedEventArgs e)
+        {
+            string downloadsFolder = GetDownloadsFolder();
+            string defaultMapFolder = LoadDefaultMapFolder();
+
+            if (!Directory.Exists(downloadsFolder))
+            {
+                MessageBox.Show(
+                    "Downloads folder was not found:\n\n" + downloadsFolder,
+                    "Downloads folder not found",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning
+                );
+
+                return;
+            }
+
+            if (!Directory.Exists(defaultMapFolder))
+            {
+                MessageBox.Show(
+                    "Default map folder was not found:\n\n" + defaultMapFolder,
+                    "Default map folder not found",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning
+                );
+
+                return;
+            }
+
+            string[] mapFiles = Directory
+                .EnumerateFiles(downloadsFolder, "*", SearchOption.TopDirectoryOnly)
+                .Where(file => file.EndsWith(".Map.Gbx", StringComparison.OrdinalIgnoreCase))
+                .ToArray();
+
+            if (mapFiles.Length == 0)
+            {
+                MessageBox.Show(
+                    "No .Map.Gbx files were found in Downloads.",
+                    "No maps found",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information
+                );
+
+                return;
+            }
+
+            int movedCount = 0;
+            int overwrittenCount = 0;
+            int keptBothCount = 0;
+            int skippedCount = 0;
+
+            foreach (string sourcePath in mapFiles)
+            {
+                string fileName = Path.GetFileName(sourcePath);
+                string destinationPath = Path.Combine(defaultMapFolder, fileName);
+
+                if (File.Exists(destinationPath))
+                {
+                    MessageBoxResult duplicateChoice = MessageBox.Show(
+                        "This map already exists in your default map folder:\n\n" +
+                        fileName +
+                        "\n\nYes = overwrite existing map\nNo = keep both\nCancel = skip this map",
+                        "Duplicate map found",
+                        MessageBoxButton.YesNoCancel,
+                        MessageBoxImage.Question
+                    );
+
+                    if (duplicateChoice == MessageBoxResult.Cancel)
+                    {
+                        skippedCount++;
+                        continue;
+                    }
+
+                    if (duplicateChoice == MessageBoxResult.Yes)
+                    {
+                        File.Delete(destinationPath);
+                        File.Move(sourcePath, destinationPath);
+
+                        movedCount++;
+                        overwrittenCount++;
+
+                        continue;
+                    }
+
+                    if (duplicateChoice == MessageBoxResult.No)
+                    {
+                        destinationPath = GetAvailableDestinationPath(defaultMapFolder, fileName);
+                        File.Move(sourcePath, destinationPath);
+
+                        movedCount++;
+                        keptBothCount++;
+
+                        continue;
+                    }
+                }
+
+                File.Move(sourcePath, destinationPath);
+                movedCount++;
+            }
+
+            _curFolder = defaultMapFolder;
+
+            await UpdateMapListAsync(_curFolder);
+            HistoryManager.AddToHistory(_curFolder);
+
+            MessageBox.Show(
+                $"Moved {movedCount} map file(s).\n\n" +
+                $"Overwritten: {overwrittenCount}\n" +
+                $"Kept both: {keptBothCount}\n" +
+                $"Skipped: {skippedCount}\n\n" +
+                $"Destination:\n{defaultMapFolder}",
+                "Maps moved",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information
+            );
         }
 
         private async void GamesListMenu_ItemClick(object sender, MahApps.Metro.Controls.ItemClickEventArgs args)

@@ -365,3 +365,10 @@ GbxMapBrowser/config/
 
 # Local prototype/test scanner
 TrackmaniaPbScanner/
+
+# Local API experiments
+TrackmaniaApiProbe/
+# Local Trackmania OAuth experiment
+TrackmaniaOAuthProbe/
+
+TrackmaniaAccountIdProbe/appsettings.local.json
