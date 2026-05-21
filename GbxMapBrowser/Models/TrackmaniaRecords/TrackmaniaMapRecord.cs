@@ -22,6 +22,7 @@ namespace GbxMapBrowser.Models.TrackmaniaRecords
         public int? AuthorMs { get; set; }
 
         public string Medal { get; set; } = "Unknown";
+        public string PersonalBestSource { get; set; } = "Unknown";
 
         public bool HasSeenReplay { get; set; }
         public bool HasSeenMapFile { get; set; }

@@ -132,10 +132,13 @@ namespace GbxMapBrowser.Services.TrackmaniaRecords
                         GetValueString(mapInfo, "AuthorLogin") ?? ParseMapInfoPart(mapInfo, 2)
                     );
 
-                    if (record.PersonalBestMs is null || personalBestMs.Value < record.PersonalBestMs.Value)
+                    if (record.PersonalBestMs is null ||
+                        string.Equals(record.PersonalBestSource, "Online", StringComparison.OrdinalIgnoreCase) ||
+                        personalBestMs.Value < record.PersonalBestMs.Value)
                     {
                         record.PersonalBestMs = personalBestMs.Value;
                         record.PersonalBest = FormatMilliseconds(personalBestMs.Value);
+                        record.PersonalBestSource = "LocalReplay";
                     }
 
                     record.HasSeenReplay = true;
@@ -238,7 +241,7 @@ namespace GbxMapBrowser.Services.TrackmaniaRecords
             return newRecord;
         }
 
-        private static string CalculateMedal(TrackmaniaMapRecord record)
+        public static string CalculateMedal(TrackmaniaMapRecord record)
         {
             if (record.PersonalBestMs is null)
             {
@@ -413,7 +416,7 @@ namespace GbxMapBrowser.Services.TrackmaniaRecords
             return text.Trim();
         }
 
-        private static string FormatMilliseconds(int milliseconds)
+        public static string FormatMilliseconds(int milliseconds)
         {
             TimeSpan time = TimeSpan.FromMilliseconds(milliseconds);
             int totalMinutes = (int)time.TotalMinutes;

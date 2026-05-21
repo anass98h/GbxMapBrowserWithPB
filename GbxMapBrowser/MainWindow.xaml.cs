@@ -23,6 +23,13 @@ namespace GbxMapBrowser
         private readonly GbxGameViewModel _gbxGameViewModel = new();
 
         private readonly TrackmaniaRecordImportService _trackmaniaRecordImportService = new(new TrackmaniaRecordDatabase());
+
+        private readonly TrackmaniaOnlineRecordService _trackmaniaOnlineRecordService = new(
+            new TrackmaniaRecordDatabase(),
+            new TrackmaniaOnlineRecordCacheService(),
+            new TrackmaniaAccountIdService(),
+            new TrackmaniaDedicatedServerCredentialService()
+        );
         private readonly SearchOption _searchOption;
         private readonly List<FolderAndFileInfo> _selectedItems = [];
 
@@ -415,48 +422,59 @@ namespace GbxMapBrowser
 
         private async void RefreshPbDatabaseButton_Click(object sender, RoutedEventArgs e)
         {
-            refreshPbDatabaseButton.IsEnabled = false;
-            pbStatsLabel.Content = "PB cache: refreshing...";
+            Control? refreshButton = sender as Control;
+
+            if (refreshButton is not null)
+            {
+                refreshButton.IsEnabled = false;
+            }
+
+            Mouse.OverrideCursor = Cursors.Wait;
 
             try
             {
-                TrackmaniaRecordImportResult result = await Task.Run(() =>
-                    _trackmaniaRecordImportService.Refresh(_curFolder)
+                await Task.Run(() => _trackmaniaRecordImportService.Refresh(_curFolder));
+
+                TrackmaniaOnlineRecordRefreshResult onlineResult =
+                    await _trackmaniaOnlineRecordService.RefreshMissingOnlineRecordsAsync(_curFolder);
+
+                await UpdateMapListAsync(_curFolder);
+
+                MessageBox.Show(
+                    "Refresh PB finished.\n\n" +
+                    $"Maps in current folder: {onlineResult.MapRecordsInCurrentFolder}\n" +
+                    $"Missing PB before online check: {onlineResult.MissingPersonalBestCount}\n" +
+                    $"Used cached online PB: {onlineResult.AppliedCachedFoundCount}\n" +
+                    $"Skipped cached NotFound: {onlineResult.SkippedCachedNotFoundCount}\n" +
+                    $"Skipped temporary Failed: {onlineResult.SkippedTemporaryFailedCount}\n" +
+                    $"Checked online now: {onlineResult.CheckedOnlineCount}\n" +
+                    $"Found online: {onlineResult.FoundOnlineCount}\n" +
+                    $"Not found online: {onlineResult.NotFoundOnlineCount}\n" +
+                    $"Failed: {onlineResult.FailedCount}",
+                    "Refresh PB",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information
                 );
-
-                Dictionary<string, TrackmaniaMapRecord> recordsByUid = await Task.Run(() =>
-                    _trackmaniaRecordImportService
-                        .GetAllRecords()
-                        .Where(record => !string.IsNullOrWhiteSpace(record.MapUid))
-                        .GroupBy(record => record.MapUid)
-                        .ToDictionary(group => group.Key, group => group.First())
-                );
-
-                _mapInfoViewModel.ApplyTrackmaniaRecords(recordsByUid);
-                mapListBox.Items.Refresh();
-
-                UpdatePbStatsLabel();
-
-                pbStatsLabel.Content =
-                    $"PB cache: {result.TotalRecords} maps | Replays: {result.ImportedReplayCount} | Maps: {result.ImportedMapCount}";
             }
             catch (Exception ex)
             {
-                pbStatsLabel.Content = "PB cache: refresh failed";
-
                 MessageBox.Show(
                     ex.Message,
-                    "PB database refresh failed",
+                    "Refresh PB failed",
                     MessageBoxButton.OK,
                     MessageBoxImage.Warning
                 );
             }
             finally
             {
-                refreshPbDatabaseButton.IsEnabled = true;
+                Mouse.OverrideCursor = null;
+
+                if (refreshButton is not null)
+                {
+                    refreshButton.IsEnabled = true;
+                }
             }
         }
-
         private void UpdatePbStatsLabel()
         {
             try
