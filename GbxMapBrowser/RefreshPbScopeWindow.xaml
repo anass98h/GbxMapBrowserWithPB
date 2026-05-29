@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Refresh PB Scope"
         Width="470"
-        Height="470"
+        Height="620"
         ResizeMode="NoResize"
         WindowStartupLocation="CenterOwner"
         WindowStyle="ToolWindow"
@@ -49,7 +49,7 @@
                   Header="Folders"
                   Foreground="{DynamicResource MahApps.Brushes.Text}"
                   Padding="10">
-            <ScrollViewer Height="220"
+            <ScrollViewer Height="370"
                           VerticalScrollBarVisibility="Auto">
                 <StackPanel x:Name="folderCheckBoxesPanel"/>
             </ScrollViewer>

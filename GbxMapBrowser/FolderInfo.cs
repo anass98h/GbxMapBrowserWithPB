@@ -53,8 +53,8 @@ namespace GbxMapBrowser
             if (!Directory.Exists(FullPath)) return 0;
             try
             {
-                var files = Directory.GetFiles(FullPath);
-                var maps = files.Where(x => x.EndsWith(".Gbx")).ToArray();
+                var files = Directory.GetFiles(FullPath, "*.Gbx", SearchOption.AllDirectories);
+                var maps = files.Where(x => x.EndsWith(".Gbx", StringComparison.OrdinalIgnoreCase)).ToArray();
                 return maps.Length;
             }
             catch { }

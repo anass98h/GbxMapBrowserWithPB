@@ -33,6 +33,7 @@ namespace GbxMapBrowser
         );
         private readonly SearchOption _searchOption;
         private readonly List<FolderAndFileInfo> _selectedItems = [];
+        private readonly HashSet<string> _defaultFolderPromptedGameNames = [];
         private object _mapBrowserContent;
 
 
@@ -217,8 +218,16 @@ namespace GbxMapBrowser
         {
             gamesListMenu.Content = new TrackmaniaExchangePage(
                 LoadDefaultMapFolder(),
-                () => gamesListMenu.Content = _mapBrowserContent
+                ShowMapBrowserContent
             );
+        }
+
+        private void ShowMapBrowserContent()
+        {
+            if (!ReferenceEquals(gamesListMenu.Content, _mapBrowserContent))
+            {
+                gamesListMenu.Content = _mapBrowserContent;
+            }
         }
 
         private async void OrganizeMapsByMedalButton_Click(object sender, RoutedEventArgs e)
@@ -489,7 +498,7 @@ namespace GbxMapBrowser
             var selGame = (GbxGame)gamesListMenu.SelectedItem;
             if (!selGame.IsVisibleInGameList) return;
 
-            gamesListMenu.Content = _mapBrowserContent;
+            ShowMapBrowserContent();
 
             // Assign selection of the game
             _gbxGameViewModel.SelectedGbxGame = selGame;
@@ -501,10 +510,64 @@ namespace GbxMapBrowser
 
             // Load the folder, add it to history
             _curFolder = selGame.MapsFolder;
+            AskToUseGameMapFolderAsDefault(selGame);
 
             await UpdateMapListAsync(selGame.MapsFolder);
             HistoryManager.AddToHistory(_curFolder);
             await Task.CompletedTask;
+        }
+
+        private void AskToUseGameMapFolderAsDefault(GbxGame game)
+        {
+            if (game == null ||
+                string.IsNullOrWhiteSpace(game.Name) ||
+                string.IsNullOrWhiteSpace(game.MapsFolder) ||
+                !Directory.Exists(game.MapsFolder))
+            {
+                return;
+            }
+
+            if (!_defaultFolderPromptedGameNames.Add(game.Name))
+            {
+                return;
+            }
+
+            if (IsSameFolder(LoadDefaultMapFolder(), game.MapsFolder))
+            {
+                return;
+            }
+
+            MessageBoxResult result = MessageBox.Show(
+                $"Set the default map folder to {game.Name} Maps?\n\n{game.MapsFolder}",
+                "Set default folder?",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Question
+            );
+
+            if (result == MessageBoxResult.Yes)
+            {
+                SaveDefaultMapFolder(game.MapsFolder);
+            }
+        }
+
+        private static bool IsSameFolder(string firstFolder, string secondFolder)
+        {
+            if (string.IsNullOrWhiteSpace(firstFolder) || string.IsNullOrWhiteSpace(secondFolder))
+            {
+                return false;
+            }
+
+            try
+            {
+                string firstFullPath = Path.GetFullPath(firstFolder).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+                string secondFullPath = Path.GetFullPath(secondFolder).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+
+                return string.Equals(firstFullPath, secondFullPath, System.StringComparison.OrdinalIgnoreCase);
+            }
+            catch
+            {
+                return string.Equals(firstFolder, secondFolder, System.StringComparison.OrdinalIgnoreCase);
+            }
         }
         #endregion
 
@@ -805,6 +868,8 @@ namespace GbxMapBrowser
 
         private async void GoDefaultFolderButton_Click(object sender, RoutedEventArgs e)
         {
+            ShowMapBrowserContent();
+
             string defaultFolder = LoadDefaultMapFolder();
 
             if (!Directory.Exists(defaultFolder))
@@ -868,18 +933,24 @@ namespace GbxMapBrowser
 
         private async void UndoButton_Click(object sender, RoutedEventArgs e)
         {
+            ShowMapBrowserContent();
+
             _curFolder = await Task.Run(HistoryManager.RequestPrev);
             await UpdateMapListAsync(_curFolder);
         }
 
         private async void RedoButton_Click(object sender, RoutedEventArgs e)
         {
+            ShowMapBrowserContent();
+
             _curFolder = await Task.Run(HistoryManager.RequestNext);
             await UpdateMapListAsync(_curFolder);
         }
 
         private async void ParentFolderButton_Click(object sender, RoutedEventArgs e)
         {
+            ShowMapBrowserContent();
+
             try
             {
                 var parentFolder = Directory.GetParent(_curFolder);
