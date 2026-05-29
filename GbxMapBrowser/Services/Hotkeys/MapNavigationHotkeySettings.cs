@@ -10,7 +10,7 @@ namespace GbxMapBrowser.Services.Hotkeys
         public HotkeyGesture Forward { get; set; } = HotkeyGesture.Empty;
         public HotkeyGesture Backward { get; set; } = HotkeyGesture.Empty;
 
-        public bool HasBothHotkeys => !Forward.IsEmpty && !Backward.IsEmpty;
+        public bool HasBothHotkeys => Forward.IsValidCombination && Backward.IsValidCombination;
 
         public MapNavigationHotkeySettings Clone()
         {
@@ -108,6 +108,7 @@ namespace GbxMapBrowser.Services.Hotkeys
         public Key Key { get; }
         public ModifierKeys Modifiers { get; }
         public bool IsEmpty => Key == Key.None;
+        public bool IsValidCombination => !IsEmpty && Modifiers != ModifierKeys.None;
 
         public override string ToString()
         {

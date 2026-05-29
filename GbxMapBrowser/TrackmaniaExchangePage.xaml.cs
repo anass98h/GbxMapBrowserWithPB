@@ -58,8 +58,8 @@ namespace GbxMapBrowser
                 SetStatus("Loading Track of the Day maps from TMX...");
                 IReadOnlyList<TmxMap> maps = await _trackmaniaExchangeService.GetRecentTrackOfTheDayMapsAsync(window.Value);
 
-                SetStatus("Scanning local maps...");
-                HashSet<string> existingMapUids = await Task.Run(() => ScanMapUids(_defaultMapFolder));
+                SetStatus("Scanning local maps in the default folder and all subfolders...");
+                LocalMapInventory localMaps = await Task.Run(() => ScanLocalMaps(_defaultMapFolder));
 
                 int alreadyOwnedCount = 0;
                 int downloadedCount = 0;
@@ -68,8 +68,7 @@ namespace GbxMapBrowser
 
                 foreach (TmxMap map in maps)
                 {
-                    bool alreadyOwned = !string.IsNullOrWhiteSpace(map.MapUid) &&
-                        existingMapUids.Contains(map.MapUid);
+                    bool alreadyOwned = HasLocalMap(localMaps, map);
 
                     var item = new TrackmaniaExchangeResultItem
                     {
@@ -92,7 +91,7 @@ namespace GbxMapBrowser
                     {
                         SetStatus($"Downloading {map.Name}...");
                         await _trackmaniaExchangeService.DownloadMapAsync(map, _defaultMapFolder);
-                        existingMapUids.Add(map.MapUid);
+                        AddTmxMapToInventory(localMaps, map);
                         item.DownloadedCount = 1;
                         item.Status = "Downloaded";
                         downloadedCount++;
@@ -283,29 +282,19 @@ namespace GbxMapBrowser
 
         private static HashSet<string> ScanMapUids(string folder)
         {
-            HashSet<string> mapUids = new(StringComparer.OrdinalIgnoreCase);
+            return ScanLocalMaps(folder).MapUids;
+        }
+
+        private static LocalMapInventory ScanLocalMaps(string folder)
+        {
+            LocalMapInventory inventory = new();
 
             if (!Directory.Exists(folder))
             {
-                return mapUids;
+                return inventory;
             }
 
-            IEnumerable<string> mapFiles;
-
-            try
-            {
-                mapFiles = Directory.EnumerateFiles(folder, "*.Gbx", SearchOption.AllDirectories)
-                    .Where(file =>
-                        file.EndsWith(".Map.Gbx", StringComparison.OrdinalIgnoreCase) ||
-                        file.EndsWith(".Challenge.Gbx", StringComparison.OrdinalIgnoreCase))
-                    .ToList();
-            }
-            catch
-            {
-                return mapUids;
-            }
-
-            foreach (string mapFile in mapFiles)
+            foreach (string mapFile in EnumerateMapFilesRecursively(folder))
             {
                 try
                 {
@@ -313,16 +302,144 @@ namespace GbxMapBrowser
 
                     if (mapInfo.IsWorking && !string.IsNullOrWhiteSpace(mapInfo.MapUid))
                     {
-                        mapUids.Add(mapInfo.MapUid);
+                        inventory.MapUids.Add(mapInfo.MapUid);
+                    }
+
+                    if (mapInfo.IsWorking)
+                    {
+                        AddNameToInventory(inventory, mapInfo.DisplayName);
                     }
                 }
                 catch
                 {
                     // Skip unreadable maps while checking local ownership.
                 }
+
+                AddNameToInventory(inventory, Path.GetFileNameWithoutExtension(mapFile));
             }
 
-            return mapUids;
+            return inventory;
+        }
+
+        private static bool HasLocalMap(LocalMapInventory inventory, TmxMap map)
+        {
+            if (inventory == null || map == null)
+            {
+                return false;
+            }
+
+            if (!string.IsNullOrWhiteSpace(map.MapUid) &&
+                inventory.MapUids.Contains(map.MapUid))
+            {
+                return true;
+            }
+
+            string normalizedName = NormalizeMapName(map.Name);
+
+            return !string.IsNullOrWhiteSpace(normalizedName) &&
+                inventory.MapNames.Contains(normalizedName);
+        }
+
+        private static void AddTmxMapToInventory(LocalMapInventory inventory, TmxMap map)
+        {
+            if (inventory == null || map == null)
+            {
+                return;
+            }
+
+            if (!string.IsNullOrWhiteSpace(map.MapUid))
+            {
+                inventory.MapUids.Add(map.MapUid);
+            }
+
+            AddNameToInventory(inventory, map.Name);
+        }
+
+        private static void AddNameToInventory(LocalMapInventory inventory, string mapName)
+        {
+            string normalizedName = NormalizeMapName(mapName);
+
+            if (!string.IsNullOrWhiteSpace(normalizedName))
+            {
+                inventory.MapNames.Add(normalizedName);
+            }
+        }
+
+        private static string NormalizeMapName(string mapName)
+        {
+            if (string.IsNullOrWhiteSpace(mapName))
+            {
+                return "";
+            }
+
+            string normalizedName = mapName.Trim();
+            int copySuffixStart = normalizedName.LastIndexOf(" (", StringComparison.Ordinal);
+
+            if (copySuffixStart > 0 &&
+                normalizedName.EndsWith(")", StringComparison.Ordinal) &&
+                int.TryParse(normalizedName[(copySuffixStart + 2)..^1], out _))
+            {
+                normalizedName = normalizedName[..copySuffixStart];
+            }
+
+            if (normalizedName.EndsWith(".Map", StringComparison.OrdinalIgnoreCase))
+            {
+                normalizedName = normalizedName[..^4];
+            }
+            else if (normalizedName.EndsWith(".Challenge", StringComparison.OrdinalIgnoreCase))
+            {
+                normalizedName = normalizedName[..^10];
+            }
+
+            return normalizedName.Trim().ToLowerInvariant();
+        }
+
+        private static IReadOnlyList<string> EnumerateMapFilesRecursively(string folder)
+        {
+            List<string> mapFiles = [];
+
+            if (!Directory.Exists(folder))
+            {
+                return mapFiles;
+            }
+
+            Stack<string> foldersToScan = new();
+            foldersToScan.Push(folder);
+
+            while (foldersToScan.Count > 0)
+            {
+                string currentFolder = foldersToScan.Pop();
+
+                try
+                {
+                    foreach (string mapFile in Directory.EnumerateFiles(currentFolder, "*.Gbx", SearchOption.TopDirectoryOnly))
+                    {
+                        if (mapFile.EndsWith(".Map.Gbx", StringComparison.OrdinalIgnoreCase) ||
+                            mapFile.EndsWith(".Challenge.Gbx", StringComparison.OrdinalIgnoreCase))
+                        {
+                            mapFiles.Add(mapFile);
+                        }
+                    }
+                }
+                catch
+                {
+                    // Skip unreadable folders while continuing the rest of the tree.
+                }
+
+                try
+                {
+                    foreach (string subFolder in Directory.EnumerateDirectories(currentFolder, "*", SearchOption.TopDirectoryOnly))
+                    {
+                        foldersToScan.Push(subFolder);
+                    }
+                }
+                catch
+                {
+                    // Skip folders whose children cannot be listed.
+                }
+            }
+
+            return mapFiles;
         }
 
         private static int GetDownloadedCampaignMapCount(string campaignFolder, IReadOnlyList<TmxMap> maps)
@@ -352,11 +469,7 @@ namespace GbxMapBrowser
 
             try
             {
-                return Directory
-                    .EnumerateFiles(folder, "*.Gbx", SearchOption.AllDirectories)
-                    .Count(file =>
-                        file.EndsWith(".Map.Gbx", StringComparison.OrdinalIgnoreCase) ||
-                        file.EndsWith(".Challenge.Gbx", StringComparison.OrdinalIgnoreCase));
+                return EnumerateMapFilesRecursively(folder).Count;
             }
             catch
             {
@@ -391,5 +504,11 @@ namespace GbxMapBrowser
         public int DownloadedCount { get; set; }
         public TmxMappack Campaign { get; set; }
         public IReadOnlyList<TmxMap> CampaignMaps { get; set; } = [];
+    }
+
+    internal sealed class LocalMapInventory
+    {
+        public HashSet<string> MapUids { get; } = new(StringComparer.OrdinalIgnoreCase);
+        public HashSet<string> MapNames { get; } = new(StringComparer.OrdinalIgnoreCase);
     }
 }

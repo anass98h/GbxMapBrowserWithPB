@@ -19,7 +19,7 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <TextBlock Text="Map navigation hotkeys launch the next or previous map from the current map list while the app is running in the background."
+        <TextBlock Text="Map navigation hotkeys launch the next or previous map from the current map list while the app is running in the background. Each hotkey must be a combination such as Ctrl + Alt + N."
                    TextWrapping="Wrap"
                    FontSize="15"
                    Foreground="{DynamicResource MahApps.Brushes.Text}"/>
@@ -47,7 +47,8 @@
                        VerticalAlignment="Center"
                        Foreground="{DynamicResource MahApps.Brushes.Text}"/>
 
-            <Button Grid.Column="2"
+            <Button x:Name="setForwardButton"
+                    Grid.Column="2"
                     Content="Set"
                     Height="30"
                     Style="{StaticResource StandardButtonStyle}"
@@ -70,7 +71,8 @@
                        VerticalAlignment="Center"
                        Foreground="{DynamicResource MahApps.Brushes.Text}"/>
 
-            <Button Grid.Column="2"
+            <Button x:Name="setBackwardButton"
+                    Grid.Column="2"
                     Content="Set"
                     Height="30"
                     Style="{StaticResource StandardButtonStyle}"

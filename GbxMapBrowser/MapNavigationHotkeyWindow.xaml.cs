@@ -39,12 +39,24 @@ namespace GbxMapBrowser
 
         private void SaveButton_Click(object sender, RoutedEventArgs e)
         {
+            if (_captureTarget != CaptureTarget.None)
+            {
+                MessageBox.Show(
+                    "Finish setting the current hotkey before saving.",
+                    "Hotkey capture active",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information
+                );
+
+                return;
+            }
+
             Settings.IsEnabled = enabledCheckBox.IsChecked == true;
 
             if (Settings.IsEnabled && !Settings.HasBothHotkeys)
             {
                 MessageBox.Show(
-                    "Set both forward and backward hotkeys, or disable map navigation hotkeys.",
+                    "Set both forward and backward hotkeys as key combinations, or disable map navigation hotkeys.",
                     "Missing hotkey",
                     MessageBoxButton.OK,
                     MessageBoxImage.Warning
@@ -88,6 +100,7 @@ namespace GbxMapBrowser
             {
                 _captureTarget = CaptureTarget.None;
                 captureStatusTextBlock.Text = "Hotkey capture cancelled.";
+                UpdateCaptureButtonState();
                 return;
             }
 
@@ -100,6 +113,12 @@ namespace GbxMapBrowser
 
             HotkeyGesture hotkey = new(key, Keyboard.Modifiers);
 
+            if (!hotkey.IsValidCombination)
+            {
+                captureStatusTextBlock.Text = "Hotkeys must use at least one modifier plus one key, for example Ctrl + Alt + N.";
+                return;
+            }
+
             if (_captureTarget == CaptureTarget.Forward)
             {
                 Settings.Forward = hotkey;
@@ -111,6 +130,7 @@ namespace GbxMapBrowser
 
             _captureTarget = CaptureTarget.None;
             UpdateHotkeyText();
+            UpdateCaptureButtonState();
             captureStatusTextBlock.Text = "Hotkey set. Save to apply it.";
         }
 
@@ -118,6 +138,7 @@ namespace GbxMapBrowser
         {
             _captureTarget = target;
             captureStatusTextBlock.Text = $"Press the {label} hotkey now. Press Esc to cancel.";
+            UpdateCaptureButtonState();
             Focus();
         }
 
@@ -125,6 +146,14 @@ namespace GbxMapBrowser
         {
             forwardHotkeyTextBlock.Text = Settings.Forward.ToString();
             backwardHotkeyTextBlock.Text = Settings.Backward.ToString();
+        }
+
+        private void UpdateCaptureButtonState()
+        {
+            setForwardButton.Content = _captureTarget == CaptureTarget.Forward ? "Listening..." : "Set";
+            setBackwardButton.Content = _captureTarget == CaptureTarget.Backward ? "Listening..." : "Set";
+            setForwardButton.IsEnabled = _captureTarget is CaptureTarget.None or CaptureTarget.Forward;
+            setBackwardButton.IsEnabled = _captureTarget is CaptureTarget.None or CaptureTarget.Backward;
         }
 
         private static Key GetActualKey(KeyEventArgs e)
