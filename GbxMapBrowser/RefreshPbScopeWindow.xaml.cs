@@ -19,9 +19,17 @@ namespace GbxMapBrowser
         public IReadOnlyCollection<string> SelectedFolderNames { get; private set; } = [];
         private readonly Dictionary<CheckBox, string> _folderNamesByCheckBox = [];
 
-        public RefreshPbScopeWindow(string defaultMapFolder)
+        public RefreshPbScopeWindow(
+            string defaultMapFolder,
+            string title = "Refresh PB Scope",
+            string description = "Choose which map folders should be refreshed.",
+            string confirmButtonText = "Refresh PB"
+        )
         {
             InitializeComponent();
+            Title = title;
+            descriptionTextBlock.Text = description;
+            confirmButton.Content = confirmButtonText;
             LoadFolderCheckBoxes(defaultMapFolder);
             SetAllCheckBoxes(true);
             SetFolderCheckBoxesEnabled(false);

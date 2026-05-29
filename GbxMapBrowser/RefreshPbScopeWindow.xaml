@@ -16,7 +16,8 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <TextBlock Text="Choose which map folders should be refreshed."
+        <TextBlock x:Name="descriptionTextBlock"
+                   Text="Choose which map folders should be refreshed."
                    TextWrapping="Wrap"
                    FontSize="15"
                    Foreground="{DynamicResource MahApps.Brushes.Text}"/>
@@ -70,7 +71,8 @@
                     Style="{StaticResource StandardButtonStyle}"
                     Click="CancelButton_Click"/>
 
-            <Button Grid.Column="2"
+            <Button x:Name="confirmButton"
+                    Grid.Column="2"
                     Content="Refresh PB"
                     Width="110"
                     Height="30"

@@ -4,6 +4,7 @@ using System.Collections.Specialized;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -179,6 +180,326 @@ namespace GbxMapBrowser
             }
         }
 
+        private static List<DuplicateMapGroup> FindDuplicateMapGroups(
+            string defaultMapFolder,
+            List<RefreshPbFolderTarget> folderTargets
+        )
+        {
+            List<DuplicateMapCandidate> maps = [];
+            HashSet<string> scannedPaths = new(StringComparer.OrdinalIgnoreCase);
+
+            foreach (RefreshPbFolderTarget folderTarget in folderTargets)
+            {
+                foreach (string mapPath in EnumerateDuplicateMapFiles(defaultMapFolder, folderTarget))
+                {
+                    if (!scannedPaths.Add(mapPath))
+                    {
+                        continue;
+                    }
+
+                    string duplicateKey;
+
+                    try
+                    {
+                        duplicateKey = "hash:" + ComputeFileHash(mapPath);
+                    }
+                    catch
+                    {
+                        continue;
+                    }
+
+                    string displayName = GetDuplicateDisplayName(mapPath);
+
+                    try
+                    {
+                        MapInfo mapInfo = new(mapPath, true);
+
+                        if (mapInfo.IsWorking)
+                        {
+                            if (!string.IsNullOrWhiteSpace(mapInfo.MapUid))
+                            {
+                                duplicateKey = "uid:" + mapInfo.MapUid;
+                            }
+
+                            if (!string.IsNullOrWhiteSpace(mapInfo.DisplayName))
+                            {
+                                displayName = mapInfo.DisplayName;
+                            }
+                        }
+                    }
+                    catch
+                    {
+                        // Exact file hash still catches duplicate files if GBX parsing fails.
+                    }
+
+                    maps.Add(new DuplicateMapCandidate(
+                        mapPath,
+                        duplicateKey,
+                        displayName,
+                        GetDuplicateKeepScore(defaultMapFolder, mapPath),
+                        File.GetCreationTimeUtc(mapPath)
+                    ));
+                }
+            }
+
+            return BuildDuplicateMapGroups(maps);
+        }
+
+        private static List<DuplicateMapGroup> BuildDuplicateMapGroups(List<DuplicateMapCandidate> maps)
+        {
+            List<DuplicateMapGroup> duplicateGroups = [];
+            HashSet<string> groupedPaths = new(StringComparer.OrdinalIgnoreCase);
+
+            List<DuplicateMapGroup> copyNameGroups = maps
+                .GroupBy(CreateCopyNameDuplicateKey, StringComparer.OrdinalIgnoreCase)
+                .Where(group =>
+                    !string.IsNullOrWhiteSpace(group.Key) &&
+                    group.Count() > 1 &&
+                    group.Any(map => HasCopySuffix(Path.GetFileNameWithoutExtension(map.Path)))
+                )
+                .Select(CreateDuplicateMapGroup)
+                .Where(group => group.Duplicates.Count > 0)
+                .ToList();
+
+            foreach (DuplicateMapGroup duplicateGroup in copyNameGroups)
+            {
+                duplicateGroups.Add(duplicateGroup);
+                groupedPaths.Add(duplicateGroup.Keep.Path);
+
+                foreach (DuplicateMapCandidate duplicate in duplicateGroup.Duplicates)
+                {
+                    groupedPaths.Add(duplicate.Path);
+                }
+            }
+
+            duplicateGroups.AddRange(maps
+                .Where(map => !groupedPaths.Contains(map.Path))
+                .GroupBy(map => map.Key, StringComparer.OrdinalIgnoreCase)
+                .Where(group => group.Count() > 1)
+                .Select(CreateDuplicateMapGroup)
+                .Where(group => group.Duplicates.Count > 0));
+
+            return duplicateGroups
+                .OrderBy(group => group.DisplayName)
+                .ToList();
+        }
+
+        private static DuplicateMapGroup CreateDuplicateMapGroup(IEnumerable<DuplicateMapCandidate> group)
+        {
+            DuplicateMapCandidate keep = group
+                .OrderByDescending(map => map.KeepScore)
+                .ThenBy(map => map.CreatedUtc)
+                .First();
+
+            return new DuplicateMapGroup(
+                keep.DisplayName,
+                keep,
+                group
+                    .Where(map => !string.Equals(map.Path, keep.Path, StringComparison.OrdinalIgnoreCase))
+                    .OrderBy(map => map.Path)
+                    .ToList()
+            );
+        }
+
+        private static string CreateCopyNameDuplicateKey(DuplicateMapCandidate map)
+        {
+            string normalizedName = NormalizeDuplicateMapName(Path.GetFileNameWithoutExtension(map.Path));
+
+            if (string.IsNullOrWhiteSpace(normalizedName))
+            {
+                return "";
+            }
+
+            string directory = Path.GetDirectoryName(map.Path) ?? "";
+
+            return Path.GetFullPath(directory).TrimEnd(
+                Path.DirectorySeparatorChar,
+                Path.AltDirectorySeparatorChar
+            ) + "|" + normalizedName;
+        }
+
+        private static string ComputeFileHash(string mapPath)
+        {
+            using FileStream fileStream = File.OpenRead(mapPath);
+            byte[] hash = SHA256.HashData(fileStream);
+
+            return Convert.ToHexString(hash);
+        }
+
+        private static string GetDuplicateDisplayName(string mapPath)
+        {
+            string fileNameWithoutExtension = Path.GetFileNameWithoutExtension(mapPath);
+            string normalizedName = NormalizeDuplicateMapName(fileNameWithoutExtension);
+
+            return string.IsNullOrWhiteSpace(normalizedName)
+                ? fileNameWithoutExtension
+                : normalizedName;
+        }
+
+        private static IReadOnlyList<string> EnumerateDuplicateMapFiles(
+            string defaultMapFolder,
+            RefreshPbFolderTarget folderTarget
+        )
+        {
+            if (string.Equals(folderTarget.Label, RefreshPbFolderNames.DefaultMaps, StringComparison.OrdinalIgnoreCase))
+            {
+                return EnumerateMapFiles(defaultMapFolder, SearchOption.TopDirectoryOnly);
+            }
+
+            return EnumerateMapFiles(folderTarget.Path, SearchOption.AllDirectories);
+        }
+
+        private static IReadOnlyList<string> EnumerateMapFilesRecursively(string folder)
+        {
+            return EnumerateMapFiles(folder, SearchOption.AllDirectories);
+        }
+
+        private static IReadOnlyList<string> EnumerateMapFiles(string folder, SearchOption searchOption)
+        {
+            List<string> mapFiles = [];
+
+            if (!Directory.Exists(folder))
+            {
+                return mapFiles;
+            }
+
+            Stack<string> foldersToScan = new();
+            foldersToScan.Push(folder);
+
+            while (foldersToScan.Count > 0)
+            {
+                string currentFolder = foldersToScan.Pop();
+
+                try
+                {
+                    foreach (string mapFile in Directory.EnumerateFiles(currentFolder, "*.Gbx", SearchOption.TopDirectoryOnly))
+                    {
+                        if (IsMapGbxFilePath(mapFile))
+                        {
+                            mapFiles.Add(mapFile);
+                        }
+                    }
+                }
+                catch
+                {
+                    // Skip folders that cannot be read.
+                }
+
+                try
+                {
+                    if (searchOption != SearchOption.AllDirectories)
+                    {
+                        continue;
+                    }
+
+                    foreach (string subFolder in Directory.EnumerateDirectories(currentFolder, "*", SearchOption.TopDirectoryOnly))
+                    {
+                        foldersToScan.Push(subFolder);
+                    }
+                }
+                catch
+                {
+                    // Skip folders that cannot be read.
+                }
+            }
+
+            return mapFiles;
+        }
+
+        private static bool IsMapGbxFilePath(string filePath)
+        {
+            if (!filePath.EndsWith(".Gbx", StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+
+            string nameWithoutGbxExtension = Path.GetFileNameWithoutExtension(filePath).Trim();
+            int copySuffixStart = nameWithoutGbxExtension.LastIndexOf(" (", StringComparison.Ordinal);
+
+            if (copySuffixStart > 0 &&
+                nameWithoutGbxExtension.EndsWith(")", StringComparison.Ordinal) &&
+                int.TryParse(nameWithoutGbxExtension[(copySuffixStart + 2)..^1], out _))
+            {
+                nameWithoutGbxExtension = nameWithoutGbxExtension[..copySuffixStart];
+            }
+
+            return nameWithoutGbxExtension.EndsWith(".Map", StringComparison.OrdinalIgnoreCase) ||
+                nameWithoutGbxExtension.EndsWith(".Challenge", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static int GetDuplicateKeepScore(string defaultMapFolder, string mapPath)
+        {
+            int score = 0;
+            string directory = Path.GetDirectoryName(mapPath) ?? "";
+
+            if (!string.Equals(
+                Path.GetFullPath(directory).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar),
+                Path.GetFullPath(defaultMapFolder).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar),
+                StringComparison.OrdinalIgnoreCase))
+            {
+                score += 10;
+            }
+
+            if (!HasCopySuffix(Path.GetFileNameWithoutExtension(mapPath)))
+            {
+                score += 5;
+            }
+
+            return score;
+        }
+
+        private static string NormalizeDuplicateMapName(string mapName)
+        {
+            if (string.IsNullOrWhiteSpace(mapName))
+            {
+                return "";
+            }
+
+            string normalizedName = mapName.Trim();
+            int copySuffixStart = normalizedName.LastIndexOf(" (", StringComparison.Ordinal);
+
+            if (copySuffixStart > 0 &&
+                normalizedName.EndsWith(")", StringComparison.Ordinal) &&
+                int.TryParse(normalizedName[(copySuffixStart + 2)..^1], out _))
+            {
+                normalizedName = normalizedName[..copySuffixStart];
+            }
+
+            if (normalizedName.EndsWith(".Map", StringComparison.OrdinalIgnoreCase))
+            {
+                normalizedName = normalizedName[..^4];
+            }
+            else if (normalizedName.EndsWith(".Challenge", StringComparison.OrdinalIgnoreCase))
+            {
+                normalizedName = normalizedName[..^10];
+            }
+
+            return normalizedName.Trim().ToLowerInvariant();
+        }
+
+        private static bool HasCopySuffix(string fileNameWithoutExtension)
+        {
+            int copySuffixStart = fileNameWithoutExtension.LastIndexOf(" (", StringComparison.Ordinal);
+
+            return copySuffixStart > 0 &&
+                fileNameWithoutExtension.EndsWith(")", StringComparison.Ordinal) &&
+                int.TryParse(fileNameWithoutExtension[(copySuffixStart + 2)..^1], out _);
+        }
+
+        private sealed record DuplicateMapCandidate(
+            string Path,
+            string Key,
+            string DisplayName,
+            int KeepScore,
+            DateTime CreatedUtc
+        );
+
+        private sealed record DuplicateMapGroup(
+            string DisplayName,
+            DuplicateMapCandidate Keep,
+            List<DuplicateMapCandidate> Duplicates
+        );
+
         #region HistoryManager
         private void HistoryManager_UpdateListUI(object sender, EventArgs e)
         {
@@ -258,6 +579,156 @@ namespace GbxMapBrowser
             _mapHotkeySettings = window.Settings.Clone();
             _mapHotkeySettings.Save();
             ApplyMapNavigationHotkeys(true);
+        }
+
+        private async void DeleteDuplicateMapsButton_Click(object sender, RoutedEventArgs e)
+        {
+            string defaultMapFolder = LoadDefaultMapFolder();
+
+            if (!Directory.Exists(defaultMapFolder))
+            {
+                MessageBox.Show(
+                    "Default map folder was not found:\n\n" + defaultMapFolder,
+                    "Default map folder not found",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning
+                );
+
+                return;
+            }
+
+            RefreshPbScopeWindow window = new(
+                defaultMapFolder,
+                "Duplicate Cleanup Scope",
+                "Choose which map folders should be checked for duplicate maps.",
+                "Check duplicates"
+            )
+            {
+                Owner = this
+            };
+
+            if (window.ShowDialog() != true)
+            {
+                return;
+            }
+
+            List<RefreshPbFolderTarget> folderTargets = GetRefreshPbFolderTargets(
+                defaultMapFolder,
+                window.SelectedFolderNames
+            );
+
+            List<RefreshPbFolderTarget> existingFolderTargets = folderTargets
+                .Where(target => Directory.Exists(target.Path))
+                .ToList();
+
+            if (existingFolderTargets.Count == 0)
+            {
+                MessageBox.Show(
+                    "None of the selected folders exist yet.",
+                    "No folders to check",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information
+                );
+
+                return;
+            }
+
+            Control duplicateButton = sender as Control;
+
+            if (duplicateButton != null)
+            {
+                duplicateButton.IsEnabled = false;
+            }
+
+            try
+            {
+                Mouse.OverrideCursor = Cursors.Wait;
+                List<DuplicateMapGroup> duplicateGroups = await Task.Run(() =>
+                    FindDuplicateMapGroups(defaultMapFolder, existingFolderTargets)
+                );
+
+                int duplicateCount = duplicateGroups.Sum(group => group.Duplicates.Count);
+
+                if (duplicateCount == 0)
+                {
+                    MessageBox.Show(
+                        "No duplicate maps were found in the selected folders.",
+                        "No duplicates found",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Information
+                    );
+
+                    return;
+                }
+
+                string preview = string.Join(
+                    "\n",
+                    duplicateGroups
+                        .Take(8)
+                        .Select(group => "- " + group.DisplayName + " (" + group.Duplicates.Count + " duplicate(s))")
+                );
+
+                if (duplicateGroups.Count > 8)
+                {
+                    preview += $"\n- ...and {duplicateGroups.Count - 8} more group(s)";
+                }
+
+                string missingFoldersText = GetMissingRefreshFoldersText(folderTargets, existingFolderTargets);
+
+                MessageBoxResult result = MessageBox.Show(
+                    $"Found {duplicateCount} duplicate map file(s) in {duplicateGroups.Count} group(s).\n\n" +
+                    $"Folders checked: {existingFolderTargets.Count} of {folderTargets.Count}\n" +
+                    $"Scope: {GetRefreshScopeText(window.SelectedScope)}\n" +
+                    missingFoldersText +
+                    "\nThe app will keep one copy of each map and delete the extra copies.\n\n" +
+                    preview + "\n\nDelete duplicate maps?",
+                    "Delete duplicate maps",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Warning
+                );
+
+                if (result != MessageBoxResult.Yes)
+                {
+                    return;
+                }
+
+                int deletedCount = 0;
+                int failedCount = 0;
+
+                foreach (DuplicateMapGroup duplicateGroup in duplicateGroups)
+                {
+                    foreach (DuplicateMapCandidate duplicate in duplicateGroup.Duplicates)
+                    {
+                        try
+                        {
+                            FileOperations.DeleteFile(duplicate.Path);
+                            deletedCount++;
+                        }
+                        catch
+                        {
+                            failedCount++;
+                        }
+                    }
+                }
+
+                await UpdateMapListAsync(_curFolder);
+
+                MessageBox.Show(
+                    $"Deleted duplicate maps: {deletedCount}\nFailed: {failedCount}",
+                    "Duplicate cleanup finished",
+                    MessageBoxButton.OK,
+                    failedCount == 0 ? MessageBoxImage.Information : MessageBoxImage.Warning
+                );
+            }
+            finally
+            {
+                Mouse.OverrideCursor = null;
+
+                if (duplicateButton != null)
+                {
+                    duplicateButton.IsEnabled = true;
+                }
+            }
         }
 
         private void ApplyMapNavigationHotkeys(bool showErrors)
