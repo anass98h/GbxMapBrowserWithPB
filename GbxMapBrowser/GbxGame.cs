@@ -67,6 +67,7 @@ namespace GbxMapBrowser
             }
         }
         public bool IsVisibleInGameLaunchMenu { get; set; }
+        public bool IsMapsFolderUserSelected { get; set; }
 
         private BitmapImage _icon;
         private string _mapsFolder;

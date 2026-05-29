@@ -531,6 +531,11 @@ namespace GbxMapBrowser
                 return;
             }
 
+            if (game.IsMapsFolderUserSelected)
+            {
+                return;
+            }
+
             ChooseGameButtonMapFolder(game);
         }
 
@@ -556,6 +561,7 @@ namespace GbxMapBrowser
             }
 
             game.MapsFolder = folderDialog.FolderName;
+            game.IsMapsFolderUserSelected = true;
             SettingsManager.SaveAllSettings(_gbxGameViewModel);
             return true;
         }

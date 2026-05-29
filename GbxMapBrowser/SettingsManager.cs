@@ -91,6 +91,11 @@ namespace GbxMapBrowser
                             }
                         }
 
+                        if (props.Length >= 6)
+                        {
+                            game.IsMapsFolderUserSelected = props[5] == "M";
+                        }
+
                     }
                 }
             }
@@ -123,7 +128,8 @@ namespace GbxMapBrowser
                     game.ExeLocation + "|" +
                     enabledString + "|" +
                     visibleInGameListString + "|" +
-                    Sorting.KindsShort[(int)game.DefaultSortKind]
+                    Sorting.KindsShort[(int)game.DefaultSortKind] + "|" +
+                    (game.IsMapsFolderUserSelected ? "M" : "A")
                     );
             }
             File.WriteAllLinesAsync(settingsFilePath, settingsText);
@@ -176,6 +182,11 @@ namespace GbxMapBrowser
                         }
                     }
 
+                    if (props.Length >= 9)
+                    {
+                        game.IsMapsFolderUserSelected = props[8] == "M";
+                    }
+
                 }
                 catch (Exception ex)
                 {
@@ -214,7 +225,8 @@ namespace GbxMapBrowser
                     visibleInGameListString + "|" +
                     unlimiterString + "|" +
                     game.Icon.UriSource.LocalPath + "|" +
-                    Sorting.KindsShort[(int)game.DefaultSortKind]);
+                    Sorting.KindsShort[(int)game.DefaultSortKind] + "|" +
+                    (game.IsMapsFolderUserSelected ? "M" : "A"));
             }
             File.WriteAllLinesAsync(customGamesSettingsFilePath, settingsText);
         }
