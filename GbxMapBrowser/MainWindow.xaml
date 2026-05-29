@@ -337,7 +337,7 @@
 
                         <Label x:Name="pbStatsLabel"
                                Grid.Column="2"
-                               Content="PB cache: -"
+                               Content="Medals: - | Map files: -"
                                VerticalContentAlignment="Center"
                                Margin="5 0">
                             <Label.Style>

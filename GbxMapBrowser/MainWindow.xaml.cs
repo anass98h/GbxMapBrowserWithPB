@@ -840,19 +840,17 @@ namespace GbxMapBrowser
             {
                 var records = _trackmaniaRecordImportService.GetAllRecords();
 
-                int cachedMaps = records.Count;
-                int withPersonalBest = records.Count(record => record.PersonalBestMs is not null);
                 int withMapFile = records.Count(record => record.HasSeenMapFile);
                 int knownMedals = records.Count(record =>
                     !string.Equals(record.Medal, "Unknown", StringComparison.OrdinalIgnoreCase)
                 );
 
                 pbStatsLabel.Content =
-                    $"PB cache: {cachedMaps} maps | PBs: {withPersonalBest} | Medals: {knownMedals} | Map files: {withMapFile}";
+                    $"Medals: {knownMedals} | Map files: {withMapFile}";
             }
             catch
             {
-                pbStatsLabel.Content = "PB cache: unavailable";
+                pbStatsLabel.Content = "Medals: unavailable | Map files: unavailable";
             }
         }
 
