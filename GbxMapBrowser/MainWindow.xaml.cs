@@ -9,6 +9,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using GbxMapBrowser.Models.TrackmaniaRecords;
+using GbxMapBrowser.Services.Hotkeys;
 using GbxMapBrowser.Services.TrackmaniaRecords;
 using GbxMapBrowser.Windows;
 
@@ -34,6 +35,9 @@ namespace GbxMapBrowser
         private readonly SearchOption _searchOption;
         private readonly List<FolderAndFileInfo> _selectedItems = [];
         private readonly HashSet<string> _defaultFolderPromptedGameNames = [];
+        private readonly GlobalHotkeyService _mapHotkeyService;
+        private MapNavigationHotkeySettings _mapHotkeySettings;
+        private string _lastLaunchedMapPath;
         private object _mapBrowserContent;
 
 
@@ -44,6 +48,12 @@ namespace GbxMapBrowser
             _curFolder = LoadDefaultMapFolder();
             _searchOption = SearchOption.TopDirectoryOnly;
             InitializeComponent();
+            _mapHotkeySettings = MapNavigationHotkeySettings.Load();
+            _mapHotkeyService = new GlobalHotkeyService(this);
+            _mapHotkeyService.ForwardPressed += MapHotkeyService_ForwardPressed;
+            _mapHotkeyService.BackwardPressed += MapHotkeyService_BackwardPressed;
+            SourceInitialized += MainWindow_SourceInitialized;
+            Closed += MainWindow_Closed;
             _mapBrowserContent = gamesListMenu.Content;
             LoadGbxGameList();
             UpdateMapPreviewVisibility(Properties.Settings.Default.ShowMapPreviewColumn);
@@ -214,12 +224,64 @@ namespace GbxMapBrowser
             window.ShowDialog();
         }
 
+        private void MainWindow_SourceInitialized(object sender, EventArgs e)
+        {
+            _mapHotkeyService.Initialize();
+            ApplyMapNavigationHotkeys(false);
+        }
+
+        private void MainWindow_Closed(object sender, EventArgs e)
+        {
+            _mapHotkeyService.Dispose();
+        }
+
         private void TrackmaniaExchangeButton_Click(object sender, RoutedEventArgs e)
         {
             gamesListMenu.Content = new TrackmaniaExchangePage(
                 LoadDefaultMapFolder(),
                 ShowMapBrowserContent
             );
+        }
+
+        private void MapHotkeysButton_Click(object sender, RoutedEventArgs e)
+        {
+            MapNavigationHotkeyWindow window = new(_mapHotkeySettings)
+            {
+                Owner = this
+            };
+
+            if (window.ShowDialog() != true)
+            {
+                return;
+            }
+
+            _mapHotkeySettings = window.Settings.Clone();
+            _mapHotkeySettings.Save();
+            ApplyMapNavigationHotkeys(true);
+        }
+
+        private void ApplyMapNavigationHotkeys(bool showErrors)
+        {
+            try
+            {
+                _mapHotkeyService.Apply(_mapHotkeySettings);
+            }
+            catch (Exception ex)
+            {
+                _mapHotkeySettings.IsEnabled = false;
+                _mapHotkeySettings.Save();
+                _mapHotkeyService.Unregister();
+
+                if (showErrors)
+                {
+                    MessageBox.Show(
+                        ex.Message,
+                        "Map hotkeys disabled",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Warning
+                    );
+                }
+            }
         }
 
         private void ShowMapBrowserContent()
@@ -962,6 +1024,75 @@ namespace GbxMapBrowser
         #endregion
 
         #region LaunchingItemAndMapListSelection
+        private async void MapHotkeyService_ForwardPressed(object sender, EventArgs e)
+        {
+            await LaunchAdjacentMapAsync(1);
+        }
+
+        private async void MapHotkeyService_BackwardPressed(object sender, EventArgs e)
+        {
+            await LaunchAdjacentMapAsync(-1);
+        }
+
+        private async Task LaunchAdjacentMapAsync(int direction)
+        {
+            if (_mapInfoViewModel.IsLoading)
+            {
+                return;
+            }
+
+            List<MapInfo> maps = _mapInfoViewModel.MapList
+                .OfType<MapInfo>()
+                .ToList();
+
+            if (maps.Count == 0)
+            {
+                return;
+            }
+
+            MapInfo currentMap = maps.FirstOrDefault(map =>
+                !string.IsNullOrWhiteSpace(_lastLaunchedMapPath) &&
+                string.Equals(map.FullPath, _lastLaunchedMapPath, System.StringComparison.OrdinalIgnoreCase)
+            );
+
+            currentMap ??= mapListBox.SelectedItem as MapInfo;
+
+            int currentIndex = currentMap == null
+                ? (direction > 0 ? -1 : maps.Count)
+                : maps.IndexOf(currentMap);
+
+            int targetIndex = currentIndex + direction;
+
+            if (targetIndex < 0 || targetIndex >= maps.Count)
+            {
+                return;
+            }
+
+            MapInfo targetMap = maps[targetIndex];
+            await LaunchSingleMapAsync(targetMap);
+        }
+
+        private async Task LaunchSingleMapAsync(MapInfo mapInfo)
+        {
+            if (mapInfo == null)
+            {
+                return;
+            }
+
+            GbxGame selGame = GetSelectedGame();
+
+            if (selGame == null)
+            {
+                return;
+            }
+
+            mapInfo.OpenMap(selGame);
+            _lastLaunchedMapPath = mapInfo.FullPath;
+            mapListBox.SelectedItem = mapInfo;
+            mapListBox.ScrollIntoView(mapInfo);
+            await Task.CompletedTask;
+        }
+
         private async Task MapListBoxLaunchItemAsync(FolderAndFileInfo item)
         {
             if (_mapInfoViewModel.IsLoading) return;
@@ -974,9 +1105,7 @@ namespace GbxMapBrowser
             }
             else if (item is MapInfo mapInfo)
             {
-                var selGame = GetSelectedGame();
-                if (selGame == null) return;
-                mapInfo.OpenMap(selGame);
+                await LaunchSingleMapAsync(mapInfo);
             }
             else if (item is null)
                 MessageBox.Show("Select a map to launch", "Impossible to load map", MessageBoxButton.OK, MessageBoxImage.Exclamation);
