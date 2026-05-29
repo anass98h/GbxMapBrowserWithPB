@@ -1,0 +1,83 @@
+<Window x:Class="GbxMapBrowser.RefreshPbScopeWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Refresh PB Scope"
+        Width="470"
+        Height="470"
+        ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner"
+        WindowStyle="ToolWindow"
+        Background="{DynamicResource MahApps.Brushes.ThemeBackground}">
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock Text="Choose which map folders should be refreshed."
+                   TextWrapping="Wrap"
+                   FontSize="15"
+                   Foreground="{DynamicResource MahApps.Brushes.Text}"/>
+
+        <StackPanel Grid.Row="1" Margin="0 14 0 12">
+            <RadioButton x:Name="allFoldersRadioButton"
+                         Content="All default map folders"
+                         IsChecked="True"
+                         Margin="0 4"
+                         FontSize="15"
+                         Foreground="{DynamicResource MahApps.Brushes.Text}"
+                         Checked="RefreshModeRadioButton_Checked"/>
+
+            <RadioButton x:Name="defaultMapsOnlyRadioButton"
+                         Content="Default folder maps only"
+                         Margin="0 4"
+                         FontSize="15"
+                         Foreground="{DynamicResource MahApps.Brushes.Text}"
+                         Checked="RefreshModeRadioButton_Checked"/>
+
+            <RadioButton x:Name="selectedFoldersRadioButton"
+                         Content="Selected folders"
+                         Margin="0 4"
+                         FontSize="15"
+                         Foreground="{DynamicResource MahApps.Brushes.Text}"
+                         Checked="RefreshModeRadioButton_Checked"/>
+        </StackPanel>
+
+        <GroupBox Grid.Row="2"
+                  Header="Folders"
+                  Foreground="{DynamicResource MahApps.Brushes.Text}"
+                  Padding="10">
+            <ScrollViewer Height="220"
+                          VerticalScrollBarVisibility="Auto">
+                <StackPanel x:Name="folderCheckBoxesPanel"/>
+            </ScrollViewer>
+        </GroupBox>
+
+        <Grid Grid.Row="3" Margin="0 14 0 0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <Button Grid.Column="1"
+                    Content="Cancel"
+                    Width="90"
+                    Height="30"
+                    Margin="5 0"
+                    Style="{StaticResource StandardButtonStyle}"
+                    Click="CancelButton_Click"/>
+
+            <Button Grid.Column="2"
+                    Content="Refresh PB"
+                    Width="110"
+                    Height="30"
+                    Margin="5 0 0 0"
+                    Background="{DynamicResource MahApps.Brushes.AccentBase}"
+                    Style="{StaticResource StandardButtonStyle}"
+                    Click="RefreshButton_Click"/>
+        </Grid>
+    </Grid>
+</Window>

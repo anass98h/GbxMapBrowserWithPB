@@ -566,9 +566,54 @@ namespace GbxMapBrowser
 
         private async void RefreshPbDatabaseButton_Click(object sender, RoutedEventArgs e)
         {
-            Control? refreshButton = sender as Control;
+            string defaultMapFolder = LoadDefaultMapFolder();
 
-            if (refreshButton is not null)
+            if (!Directory.Exists(defaultMapFolder))
+            {
+                MessageBox.Show(
+                    "Default map folder was not found:\n\n" + defaultMapFolder,
+                    "Default map folder not found",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning
+                );
+
+                return;
+            }
+
+            RefreshPbScopeWindow window = new(defaultMapFolder)
+            {
+                Owner = this
+            };
+
+            if (window.ShowDialog() != true)
+            {
+                return;
+            }
+
+            List<RefreshPbFolderTarget> folderTargets = GetRefreshPbFolderTargets(
+                defaultMapFolder,
+                window.SelectedFolderNames
+            );
+
+            List<RefreshPbFolderTarget> existingFolderTargets = folderTargets
+                .Where(target => Directory.Exists(target.Path))
+                .ToList();
+
+            if (existingFolderTargets.Count == 0)
+            {
+                MessageBox.Show(
+                    "None of the selected folders exist yet.",
+                    "No folders to refresh",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information
+                );
+
+                return;
+            }
+
+            Control refreshButton = sender as Control;
+
+            if (refreshButton != null)
             {
                 refreshButton.IsEnabled = false;
             }
@@ -577,16 +622,31 @@ namespace GbxMapBrowser
 
             try
             {
-                await Task.Run(() => _trackmaniaRecordImportService.Refresh(_curFolder));
+                TrackmaniaRecordImportResult importResult = await Task.Run(() => _trackmaniaRecordImportService.Refresh(
+                    existingFolderTargets.Select(target => target.Path)
+                ));
 
-                TrackmaniaOnlineRecordRefreshResult onlineResult =
-                    await _trackmaniaOnlineRecordService.RefreshMissingOnlineRecordsAsync(_curFolder);
+                TrackmaniaOnlineRecordRefreshResult onlineResult = new();
+
+                foreach (RefreshPbFolderTarget folderTarget in existingFolderTargets)
+                {
+                    TrackmaniaOnlineRecordRefreshResult folderOnlineResult =
+                        await _trackmaniaOnlineRecordService.RefreshMissingOnlineRecordsAsync(folderTarget.Path);
+
+                    AddOnlineRefreshResult(onlineResult, folderOnlineResult);
+                }
 
                 await UpdateMapListAsync(_curFolder);
 
+                string missingFoldersText = GetMissingRefreshFoldersText(folderTargets, existingFolderTargets);
+
                 MessageBox.Show(
                     "Refresh PB finished.\n\n" +
-                    $"Maps in current folder: {onlineResult.MapRecordsInCurrentFolder}\n" +
+                    $"Folders refreshed: {existingFolderTargets.Count} of {folderTargets.Count}\n" +
+                    $"Scope: {GetRefreshScopeText(window.SelectedScope)}\n" +
+                    missingFoldersText +
+                    $"Found offline PBs: {importResult.LocalPersonalBestCount}\n" +
+                    $"Maps in selected folders: {onlineResult.MapRecordsInCurrentFolder}\n" +
                     $"Missing PB before online check: {onlineResult.MissingPersonalBestCount}\n" +
                     $"Used cached online PB: {onlineResult.AppliedCachedFoundCount}\n" +
                     $"Skipped cached NotFound: {onlineResult.SkippedCachedNotFoundCount}\n" +
@@ -613,12 +673,101 @@ namespace GbxMapBrowser
             {
                 Mouse.OverrideCursor = null;
 
-                if (refreshButton is not null)
+                if (refreshButton != null)
                 {
                     refreshButton.IsEnabled = true;
                 }
             }
         }
+
+        private static string GetRefreshScopeText(RefreshPbScopeWindow.RefreshPbScope selectedScope)
+        {
+            return selectedScope switch
+            {
+                RefreshPbScopeWindow.RefreshPbScope.DefaultMapsOnly => "Default folder maps only",
+                RefreshPbScopeWindow.RefreshPbScope.SelectedFolders => "Selected folders",
+                _ => "All default map folders"
+            };
+        }
+
+        private static List<RefreshPbFolderTarget> GetRefreshPbFolderTargets(
+            string defaultMapFolder,
+            IReadOnlyCollection<string> selectedFolderNames
+        )
+        {
+            var folderTargets = new List<RefreshPbFolderTarget>();
+
+            foreach (string selectedFolderName in selectedFolderNames)
+            {
+                folderTargets.Add(new RefreshPbFolderTarget(
+                    selectedFolderName,
+                    GetRefreshPbFolderPath(defaultMapFolder, selectedFolderName)
+                ));
+            }
+
+            return folderTargets;
+        }
+
+        private static string GetRefreshPbFolderPath(string defaultMapFolder, string folderName)
+        {
+            return folderName switch
+            {
+                RefreshPbFolderNames.DefaultMaps => defaultMapFolder,
+                _ => Path.Combine(defaultMapFolder, folderName)
+            };
+        }
+
+        private static string GetMissingRefreshFoldersText(
+            List<RefreshPbFolderTarget> folderTargets,
+            List<RefreshPbFolderTarget> existingFolderTargets
+        )
+        {
+            var existingLabels = new HashSet<string>(
+                existingFolderTargets.Select(target => target.Label),
+                StringComparer.OrdinalIgnoreCase
+            );
+
+            List<string> missingLabels = folderTargets
+                .Where(target => !existingLabels.Contains(target.Label))
+                .Select(target => target.Label)
+                .ToList();
+
+            if (missingLabels.Count == 0)
+            {
+                return "";
+            }
+
+            return "Missing folders skipped: " + string.Join(", ", missingLabels) + "\n";
+        }
+
+        private static void AddOnlineRefreshResult(
+            TrackmaniaOnlineRecordRefreshResult total,
+            TrackmaniaOnlineRecordRefreshResult result
+        )
+        {
+            total.MapRecordsInCurrentFolder += result.MapRecordsInCurrentFolder;
+            total.MissingPersonalBestCount += result.MissingPersonalBestCount;
+            total.AppliedCachedFoundCount += result.AppliedCachedFoundCount;
+            total.SkippedCachedNotFoundCount += result.SkippedCachedNotFoundCount;
+            total.SkippedTemporaryFailedCount += result.SkippedTemporaryFailedCount;
+            total.CheckedOnlineCount += result.CheckedOnlineCount;
+            total.FoundOnlineCount += result.FoundOnlineCount;
+            total.NotFoundOnlineCount += result.NotFoundOnlineCount;
+            total.FailedCount += result.FailedCount;
+        }
+
+        private sealed class RefreshPbFolderTarget
+        {
+            public RefreshPbFolderTarget(string label, string path)
+            {
+                Label = label;
+                Path = path;
+            }
+
+            public string Label { get; }
+            public string Path { get; }
+        }
+
         private void UpdatePbStatsLabel()
         {
             try

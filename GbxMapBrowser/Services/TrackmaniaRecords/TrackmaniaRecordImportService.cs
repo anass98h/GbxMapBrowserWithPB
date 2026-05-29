@@ -24,6 +24,11 @@ namespace GbxMapBrowser.Services.TrackmaniaRecords
 
         public TrackmaniaRecordImportResult Refresh(string? mapFolder = null)
         {
+            return Refresh(string.IsNullOrWhiteSpace(mapFolder) ? [] : [mapFolder]);
+        }
+
+        public TrackmaniaRecordImportResult Refresh(IEnumerable<string> mapFolders)
+        {
             List<TrackmaniaMapRecord> records = _database.Load();
 
             Dictionary<string, TrackmaniaMapRecord> recordsByUid = records
@@ -31,12 +36,16 @@ namespace GbxMapBrowser.Services.TrackmaniaRecords
                 .GroupBy(record => record.MapUid)
                 .ToDictionary(group => group.Key, group => group.OrderByDescending(x => x.LastSeenUtc).First());
 
-            int importedReplayCount = ImportReplayFolder(recordsByUid, GetDefaultReplayFolder());
+            ReplayImportResult replayImportResult = ImportReplayFolder(recordsByUid, GetDefaultReplayFolder());
             int importedMapCount = 0;
+            List<string> validMapFolders = mapFolders
+                .Where(folder => !string.IsNullOrWhiteSpace(folder) && Directory.Exists(folder))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
 
-            if (!string.IsNullOrWhiteSpace(mapFolder) && Directory.Exists(mapFolder))
+            foreach (string mapFolder in validMapFolders)
             {
-                importedMapCount = ImportMapFolder(recordsByUid, mapFolder);
+                importedMapCount += ImportMapFolder(recordsByUid, mapFolder);
             }
 
             foreach (TrackmaniaMapRecord record in recordsByUid.Values)
@@ -55,10 +64,11 @@ namespace GbxMapBrowser.Services.TrackmaniaRecords
             {
                 DatabasePath = _database.DatabasePath,
                 TotalRecords = finalRecords.Count,
-                ImportedReplayCount = importedReplayCount,
+                ImportedReplayCount = replayImportResult.ImportedReplayCount,
+                LocalPersonalBestCount = replayImportResult.LocalPersonalBestCount,
                 ImportedMapCount = importedMapCount,
                 ReplayFolder = GetDefaultReplayFolder(),
-                MapFolder = mapFolder
+                MapFolder = string.Join(";", validMapFolders)
             };
         }
 
@@ -73,11 +83,11 @@ namespace GbxMapBrowser.Services.TrackmaniaRecords
             return _database.Load();
         }
 
-        private static int ImportReplayFolder(Dictionary<string, TrackmaniaMapRecord> recordsByUid, string replayFolder)
+        private static ReplayImportResult ImportReplayFolder(Dictionary<string, TrackmaniaMapRecord> recordsByUid, string replayFolder)
         {
             if (!Directory.Exists(replayFolder))
             {
-                return 0;
+                return new ReplayImportResult();
             }
 
             List<string> replayFiles = Directory
@@ -86,6 +96,7 @@ namespace GbxMapBrowser.Services.TrackmaniaRecords
                 .ToList();
 
             int importedCount = 0;
+            HashSet<string> localPersonalBestMapUids = new(StringComparer.OrdinalIgnoreCase);
 
             foreach (string replayFile in replayFiles)
             {
@@ -139,6 +150,7 @@ namespace GbxMapBrowser.Services.TrackmaniaRecords
                         record.PersonalBestMs = personalBestMs.Value;
                         record.PersonalBest = FormatMilliseconds(personalBestMs.Value);
                         record.PersonalBestSource = "LocalReplay";
+                        localPersonalBestMapUids.Add(mapUid);
                     }
 
                     record.HasSeenReplay = true;
@@ -154,7 +166,11 @@ namespace GbxMapBrowser.Services.TrackmaniaRecords
                 }
             }
 
-            return importedCount;
+            return new ReplayImportResult
+            {
+                ImportedReplayCount = importedCount,
+                LocalPersonalBestCount = localPersonalBestMapUids.Count
+            };
         }
 
         private static int ImportMapFolder(Dictionary<string, TrackmaniaMapRecord> recordsByUid, string mapFolder)
@@ -423,6 +439,12 @@ namespace GbxMapBrowser.Services.TrackmaniaRecords
 
             return $"{totalMinutes}:{time.Seconds:00}.{time.Milliseconds:000}";
         }
+
+        private sealed class ReplayImportResult
+        {
+            public int ImportedReplayCount { get; init; }
+            public int LocalPersonalBestCount { get; init; }
+        }
     }
 
     public sealed class TrackmaniaRecordImportResult
@@ -430,6 +452,7 @@ namespace GbxMapBrowser.Services.TrackmaniaRecords
         public required string DatabasePath { get; init; }
         public required int TotalRecords { get; init; }
         public required int ImportedReplayCount { get; init; }
+        public required int LocalPersonalBestCount { get; init; }
         public required int ImportedMapCount { get; init; }
         public required string ReplayFolder { get; init; }
         public string? MapFolder { get; init; }
