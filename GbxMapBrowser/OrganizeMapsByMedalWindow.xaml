@@ -17,13 +17,14 @@
         <TextBlock Text="Move maps from the default folder into medal folders."
                    TextWrapping="Wrap"
                    Margin="0 0 0 10"
-                   FontSize="15"/>
+                   FontSize="15"
+                   Foreground="White"/>
 
         <StackPanel Grid.Row="1" Margin="0 4 0 0">
-            <CheckBox x:Name="bronzeCheckBox" Content="Bronze" Margin="0 5" FontSize="15"/>
-            <CheckBox x:Name="silverCheckBox" Content="Silver" Margin="0 5" FontSize="15"/>
-            <CheckBox x:Name="goldCheckBox" Content="Gold" Margin="0 5" FontSize="15"/>
-            <CheckBox x:Name="authorCheckBox" Content="Author" Margin="0 5" FontSize="15"/>
+            <CheckBox x:Name="bronzeCheckBox" Content="Bronze" Margin="0 5" FontSize="15" Foreground="White"/>
+            <CheckBox x:Name="silverCheckBox" Content="Silver" Margin="0 5" FontSize="15" Foreground="White"/>
+            <CheckBox x:Name="goldCheckBox" Content="Gold" Margin="0 5" FontSize="15" Foreground="White"/>
+            <CheckBox x:Name="authorCheckBox" Content="Author" Margin="0 5" FontSize="15" Foreground="White"/>
         </StackPanel>
 
         <Grid Grid.Row="2">

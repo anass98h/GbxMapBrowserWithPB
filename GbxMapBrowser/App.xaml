@@ -146,6 +146,7 @@
                 <MenuItem Header="Delete"/>
                 <MenuItem Header="Rename file"/>
                 <MenuItem Header="Rename map"/>
+                <MenuItem Header="Move to skipped"/>
                 <Separator/>
                 <MenuItem Header="Properties"/>
                 <!--<MenuItem Header="Map properties (GBX Preview)"/>-->

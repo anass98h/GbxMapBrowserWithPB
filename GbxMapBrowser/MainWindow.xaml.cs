@@ -932,6 +932,25 @@ namespace GbxMapBrowser
                 }
             }
         }
+
+        private async Task MoveMapToSkippedFolderAsync(MapInfo mapInfo)
+        {
+            if (mapInfo == null)
+            {
+                return;
+            }
+
+            string skippedFolder = Path.Combine(_curFolder, "skipped");
+            Directory.CreateDirectory(skippedFolder);
+
+            string destinationPath = GetAvailableDestinationPath(
+                skippedFolder,
+                Path.GetFileName(mapInfo.FullPath)
+            );
+
+            await Task.Run(() => File.Move(mapInfo.FullPath, destinationPath));
+            await UpdateMapListAsync(_curFolder);
+        }
         #endregion
 
         #region CopyAndPaste
@@ -1196,6 +1215,9 @@ namespace GbxMapBrowser
                 case "Rename map":
                     MapOperations.RenameMap(selItem as MapInfo);
                     await UpdateMapListAsync(_curFolder);
+                    break;
+                case "Move to skipped":
+                    await MoveMapToSkippedFolderAsync(selItem as MapInfo);
                     break;
                 case "Properties":
                     FileOperations.ShowFileProperties(path);
