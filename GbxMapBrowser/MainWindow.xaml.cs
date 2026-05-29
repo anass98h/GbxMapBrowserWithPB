@@ -210,6 +210,150 @@ namespace GbxMapBrowser
             window.ShowDialog();
         }
 
+        private async void OrganizeMapsByMedalButton_Click(object sender, RoutedEventArgs e)
+        {
+            OrganizeMapsByMedalWindow window = new()
+            {
+                Owner = this
+            };
+
+            if (window.ShowDialog() != true)
+            {
+                return;
+            }
+
+            var selectedMedals = new HashSet<string>(window.SelectedMedals, StringComparer.OrdinalIgnoreCase);
+            string defaultMapFolder = LoadDefaultMapFolder();
+
+            if (!Directory.Exists(defaultMapFolder))
+            {
+                MessageBox.Show(
+                    "Default map folder was not found:\n\n" + defaultMapFolder,
+                    "Default map folder not found",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning
+                );
+
+                return;
+            }
+
+            Control organizeButton = sender as Control;
+
+            if (organizeButton != null)
+            {
+                organizeButton.IsEnabled = false;
+            }
+
+            Mouse.OverrideCursor = Cursors.Wait;
+
+            try
+            {
+                await Task.Run(() => _trackmaniaRecordImportService.Refresh(defaultMapFolder));
+
+                Dictionary<string, TrackmaniaMapRecord> recordsByUid = await Task.Run(() =>
+                    _trackmaniaRecordImportService
+                        .GetAllRecords()
+                        .Where(record => !string.IsNullOrWhiteSpace(record.MapUid))
+                        .GroupBy(record => record.MapUid)
+                        .ToDictionary(group => group.Key, group => group.First(), StringComparer.OrdinalIgnoreCase)
+                );
+
+                foreach (string medal in selectedMedals)
+                {
+                    Directory.CreateDirectory(Path.Combine(defaultMapFolder, medal));
+                }
+
+                string[] mapFiles = await Task.Run(() => Directory
+                    .EnumerateFiles(defaultMapFolder, "*.Gbx", SearchOption.TopDirectoryOnly)
+                    .Where(file =>
+                        file.EndsWith(".Map.Gbx", StringComparison.OrdinalIgnoreCase) ||
+                        file.EndsWith(".Challenge.Gbx", StringComparison.OrdinalIgnoreCase))
+                    .ToArray());
+
+                Dictionary<string, int> movedByMedal = new(StringComparer.OrdinalIgnoreCase);
+
+                foreach (string medal in selectedMedals)
+                {
+                    movedByMedal[medal] = 0;
+                }
+                int movedCount = 0;
+                int skippedCount = 0;
+                int failedCount = 0;
+
+                foreach (string sourcePath in mapFiles)
+                {
+                    try
+                    {
+                        MapInfo mapInfo = await Task.Run(() => new MapInfo(sourcePath, true));
+
+                        if (!mapInfo.IsWorking ||
+                            string.IsNullOrWhiteSpace(mapInfo.MapUid) ||
+                            !recordsByUid.TryGetValue(mapInfo.MapUid, out TrackmaniaMapRecord record) ||
+                            string.IsNullOrWhiteSpace(record.Medal) ||
+                            !selectedMedals.Contains(record.Medal))
+                        {
+                            skippedCount++;
+                            continue;
+                        }
+
+                        string destinationFolder = Path.Combine(defaultMapFolder, record.Medal);
+                        string destinationPath = GetAvailableDestinationPath(
+                            destinationFolder,
+                            Path.GetFileName(sourcePath)
+                        );
+
+                        File.Move(sourcePath, destinationPath);
+
+                        movedCount++;
+                        movedByMedal[record.Medal]++;
+                    }
+                    catch
+                    {
+                        failedCount++;
+                    }
+                }
+
+                _curFolder = defaultMapFolder;
+
+                await UpdateMapListAsync(_curFolder);
+                HistoryManager.AddToHistory(_curFolder);
+
+                string movedBreakdown = string.Join(
+                    "\n",
+                    movedByMedal.Select(pair => $"{pair.Key}: {pair.Value}")
+                );
+
+                MessageBox.Show(
+                    $"Moved {movedCount} map file(s).\n\n" +
+                    movedBreakdown +
+                    $"\n\nSkipped: {skippedCount}\n" +
+                    $"Failed: {failedCount}\n\n" +
+                    $"Default folder:\n{defaultMapFolder}",
+                    "Maps organized",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information
+                );
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    ex.Message,
+                    "Organize maps failed",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning
+                );
+            }
+            finally
+            {
+                Mouse.OverrideCursor = null;
+
+                if (organizeButton != null)
+                {
+                    organizeButton.IsEnabled = true;
+                }
+            }
+        }
+
         private async void MoveDownloadedMapsButton_Click(object sender, RoutedEventArgs e)
         {
             string downloadsFolder = GetDownloadsFolder();

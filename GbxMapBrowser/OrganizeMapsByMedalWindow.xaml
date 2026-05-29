@@ -1,0 +1,54 @@
+<Window x:Class="GbxMapBrowser.OrganizeMapsByMedalWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Organize Maps by Medal"
+        Width="360"
+        Height="265"
+        ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner"
+        WindowStyle="ToolWindow">
+    <Grid Margin="14">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock Text="Move maps from the default folder into medal folders."
+                   TextWrapping="Wrap"
+                   Margin="0 0 0 10"
+                   FontSize="15"/>
+
+        <StackPanel Grid.Row="1" Margin="0 4 0 0">
+            <CheckBox x:Name="bronzeCheckBox" Content="Bronze" Margin="0 5" FontSize="15"/>
+            <CheckBox x:Name="silverCheckBox" Content="Silver" Margin="0 5" FontSize="15"/>
+            <CheckBox x:Name="goldCheckBox" Content="Gold" Margin="0 5" FontSize="15"/>
+            <CheckBox x:Name="authorCheckBox" Content="Author" Margin="0 5" FontSize="15"/>
+        </StackPanel>
+
+        <Grid Grid.Row="2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <Button Grid.Column="1"
+                    Content="Cancel"
+                    Width="90"
+                    Height="30"
+                    Margin="5 0"
+                    Style="{StaticResource StandardButtonStyle}"
+                    Click="CancelButton_Click"/>
+
+            <Button Grid.Column="2"
+                    Content="Move maps"
+                    Width="110"
+                    Height="30"
+                    Margin="5 0 0 0"
+                    Background="{DynamicResource MahApps.Brushes.AccentBase}"
+                    Style="{StaticResource StandardButtonStyle}"
+                    Click="MoveMapsButton_Click"/>
+        </Grid>
+    </Grid>
+</Window>
