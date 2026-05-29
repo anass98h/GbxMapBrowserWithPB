@@ -33,6 +33,7 @@ namespace GbxMapBrowser
         );
         private readonly SearchOption _searchOption;
         private readonly List<FolderAndFileInfo> _selectedItems = [];
+        private object _mapBrowserContent;
 
 
 
@@ -42,6 +43,7 @@ namespace GbxMapBrowser
             _curFolder = LoadDefaultMapFolder();
             _searchOption = SearchOption.TopDirectoryOnly;
             InitializeComponent();
+            _mapBrowserContent = gamesListMenu.Content;
             LoadGbxGameList();
             UpdateMapPreviewVisibility(Properties.Settings.Default.ShowMapPreviewColumn);
             loadingLabel.DataContext = _mapInfoViewModel;
@@ -213,23 +215,10 @@ namespace GbxMapBrowser
 
         private void TrackmaniaExchangeButton_Click(object sender, RoutedEventArgs e)
         {
-            try
-            {
-                Process.Start(new ProcessStartInfo
-                {
-                    FileName = "https://trackmania.exchange/",
-                    UseShellExecute = true
-                });
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show(
-                    ex.Message,
-                    "Could not open Trackmania Exchange",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Warning
-                );
-            }
+            gamesListMenu.Content = new TrackmaniaExchangePage(
+                LoadDefaultMapFolder(),
+                () => gamesListMenu.Content = _mapBrowserContent
+            );
         }
 
         private async void OrganizeMapsByMedalButton_Click(object sender, RoutedEventArgs e)
@@ -499,6 +488,8 @@ namespace GbxMapBrowser
 
             var selGame = (GbxGame)gamesListMenu.SelectedItem;
             if (!selGame.IsVisibleInGameList) return;
+
+            gamesListMenu.Content = _mapBrowserContent;
 
             // Assign selection of the game
             _gbxGameViewModel.SelectedGbxGame = selGame;

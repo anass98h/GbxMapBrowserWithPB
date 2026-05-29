@@ -1,0 +1,79 @@
+<UserControl x:Class="GbxMapBrowser.TrackmaniaExchangePage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Grid Margin="14"
+          Background="{DynamicResource MahApps.Brushes.ThemeBackground}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <DockPanel>
+            <Button Content="Back"
+                    Width="80"
+                    Height="30"
+                    Margin="0 0 8 0"
+                    Style="{StaticResource StandardButtonStyle}"
+                    Click="BackButton_Click"/>
+
+            <TextBlock Text="Trackmania Exchange"
+                       FontSize="22"
+                       FontWeight="SemiBold"
+                       VerticalAlignment="Center"
+                       Foreground="{DynamicResource MahApps.Brushes.Text}"/>
+        </DockPanel>
+
+        <StackPanel Grid.Row="1"
+                    Orientation="Horizontal"
+                    Margin="0 14 0 12">
+            <Button x:Name="trackOfTheDayButton"
+                    Content="Track of the Day"
+                    Width="150"
+                    Height="34"
+                    Margin="0 0 8 0"
+                    Style="{StaticResource StandardButtonStyle}"
+                    Background="{DynamicResource MahApps.Brushes.AccentBase}"
+                    Click="TrackOfTheDayButton_Click"/>
+
+            <Button x:Name="officialCampaignsButton"
+                    Content="Official Campaigns"
+                    Width="160"
+                    Height="34"
+                    Margin="0 0 8 0"
+                    Style="{StaticResource StandardButtonStyle}"
+                    Click="OfficialCampaignsButton_Click"/>
+
+            <Button x:Name="downloadSelectedCampaignButton"
+                    Content="Download selected campaign"
+                    Width="210"
+                    Height="34"
+                    Style="{StaticResource StandardButtonStyle}"
+                    Click="DownloadSelectedCampaignButton_Click"/>
+        </StackPanel>
+
+        <DataGrid x:Name="resultsDataGrid"
+                  Grid.Row="2"
+                  AutoGenerateColumns="False"
+                  CanUserAddRows="False"
+                  IsReadOnly="True"
+                  SelectionMode="Single"
+                  GridLinesVisibility="Horizontal"
+                  HeadersVisibility="Column">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="2*"/>
+                <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="140"/>
+                <DataGridTextColumn Header="Maps" Binding="{Binding MapCount}" Width="80"/>
+                <DataGridTextColumn Header="Downloaded" Binding="{Binding DownloadedCount}" Width="95"/>
+                <DataGridTextColumn Header="TMX ID" Binding="{Binding Id}" Width="80"/>
+            </DataGrid.Columns>
+        </DataGrid>
+
+        <TextBlock x:Name="statusTextBlock"
+                   Grid.Row="3"
+                   Margin="0 10 0 0"
+                   TextWrapping="Wrap"
+                   Foreground="{DynamicResource MahApps.Brushes.Text}"/>
+    </Grid>
+</UserControl>
