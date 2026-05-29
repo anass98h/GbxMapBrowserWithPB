@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -208,6 +209,27 @@ namespace GbxMapBrowser
             };
 
             window.ShowDialog();
+        }
+
+        private void TrackmaniaExchangeButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = "https://trackmania.exchange/",
+                    UseShellExecute = true
+                });
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    ex.Message,
+                    "Could not open Trackmania Exchange",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning
+                );
+            }
         }
 
         private async void OrganizeMapsByMedalButton_Click(object sender, RoutedEventArgs e)

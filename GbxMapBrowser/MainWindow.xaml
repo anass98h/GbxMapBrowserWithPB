@@ -100,6 +100,20 @@
                        Height="1"
                        Grid.ColumnSpan="6"/>
         </Grid>
+        <Button x:Name="trackmaniaExchangeButton"
+                Grid.Row="1"
+                Panel.ZIndex="10"
+                Width="48"
+                Height="48"
+                Style="{StaticResource AddressButtonStyle}"
+                FontFamily="Segoe UI"
+                HorizontalAlignment="Left"
+                VerticalAlignment="Bottom"
+                Margin="0 0 0 192"
+                Click="TrackmaniaExchangeButton_Click"
+                Padding="-5"
+                FontSize="14"
+                ToolTip="Open Trackmania Exchange">TMX</Button>
         <Button x:Name="detectOnlineTimesButton"
                 Grid.Row="1"
                 Panel.ZIndex="10"
