@@ -508,21 +508,20 @@ namespace GbxMapBrowser
             // Assign sorting
             _mapInfoViewModel.SortKind = selGame.DefaultSortKind;
 
+            AskToChooseGameButtonMapFolderOnFirstClick(selGame);
+
             // Load the folder, add it to history
             _curFolder = selGame.MapsFolder;
-            AskToUseGameMapFolderAsDefault(selGame);
-
-            await UpdateMapListAsync(selGame.MapsFolder);
+            await UpdateMapListAsync(_curFolder);
             HistoryManager.AddToHistory(_curFolder);
             await Task.CompletedTask;
         }
 
-        private void AskToUseGameMapFolderAsDefault(GbxGame game)
+        private void AskToChooseGameButtonMapFolderOnFirstClick(GbxGame game)
         {
             if (game == null ||
                 string.IsNullOrWhiteSpace(game.Name) ||
-                string.IsNullOrWhiteSpace(game.MapsFolder) ||
-                !Directory.Exists(game.MapsFolder))
+                string.IsNullOrWhiteSpace(game.MapsFolder))
             {
                 return;
             }
@@ -532,42 +531,33 @@ namespace GbxMapBrowser
                 return;
             }
 
-            if (IsSameFolder(LoadDefaultMapFolder(), game.MapsFolder))
-            {
-                return;
-            }
-
-            MessageBoxResult result = MessageBox.Show(
-                $"Set the default map folder to {game.Name} Maps?\n\n{game.MapsFolder}",
-                "Set default folder?",
-                MessageBoxButton.YesNo,
-                MessageBoxImage.Question
-            );
-
-            if (result == MessageBoxResult.Yes)
-            {
-                SaveDefaultMapFolder(game.MapsFolder);
-            }
+            ChooseGameButtonMapFolder(game);
         }
 
-        private static bool IsSameFolder(string firstFolder, string secondFolder)
+        private bool ChooseGameButtonMapFolder(GbxGame game)
         {
-            if (string.IsNullOrWhiteSpace(firstFolder) || string.IsNullOrWhiteSpace(secondFolder))
+            if (game == null)
             {
                 return false;
             }
 
-            try
+            Microsoft.Win32.OpenFolderDialog folderDialog = new()
             {
-                string firstFullPath = Path.GetFullPath(firstFolder).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-                string secondFullPath = Path.GetFullPath(secondFolder).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+                Title = $"Please enter the default folder for {game.Name} Maps",
+                InitialDirectory = Directory.Exists(game.MapsFolder)
+                    ? game.MapsFolder
+                    : Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments)
+            };
 
-                return string.Equals(firstFullPath, secondFullPath, System.StringComparison.OrdinalIgnoreCase);
-            }
-            catch
+            if (folderDialog.ShowDialog(this) != true ||
+                !Directory.Exists(folderDialog.FolderName))
             {
-                return string.Equals(firstFolder, secondFolder, System.StringComparison.OrdinalIgnoreCase);
+                return false;
             }
+
+            game.MapsFolder = folderDialog.FolderName;
+            SettingsManager.SaveAllSettings(_gbxGameViewModel);
+            return true;
         }
         #endregion
 
@@ -1474,13 +1464,34 @@ namespace GbxMapBrowser
             e.Handled = true; //avoid running this multiple times
             if (selMenuItem == null)
                 return;
-            var selGame = gamesListMenu.SelectedItem;
-            if (selGame is GbxGame game)
+            GbxGame game = null;
+
+            if (sender is ContextMenu contextMenu &&
+                contextMenu.PlacementTarget is FrameworkElement placementTarget &&
+                placementTarget.DataContext is GbxGame contextGame)
+            {
+                game = contextGame;
+            }
+            else if (gamesListMenu.SelectedItem is GbxGame selectedGame)
+            {
+                game = selectedGame;
+            }
+
+            if (game != null)
             {
                 if (selMenuItem.Header.ToString() == "Hide from the game library")
                 {
                     game.IsVisibleInGameList = false;
                     await Task.Run(() => SettingsManager.SaveAllSettings(_gbxGameViewModel));
+                }
+                else if (selMenuItem.Header.ToString() == "Change default folder")
+                {
+                    if (ChooseGameButtonMapFolder(game) && ReferenceEquals(_gbxGameViewModel.SelectedGbxGame, game))
+                    {
+                        _curFolder = game.MapsFolder;
+                        await UpdateMapListAsync(_curFolder);
+                        HistoryManager.AddToHistory(_curFolder);
+                    }
                 }
                 else
                 {

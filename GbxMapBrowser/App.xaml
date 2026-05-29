@@ -183,6 +183,8 @@
             <ContextMenu x:Key="GameLibraryContextMenu">
                 <MenuItem Header="Launch"/>
                 <Separator/>
+                <MenuItem Header="Change default folder"/>
+                <Separator/>
                 <MenuItem Header="Hide from the game library"/>
             </ContextMenu>
 

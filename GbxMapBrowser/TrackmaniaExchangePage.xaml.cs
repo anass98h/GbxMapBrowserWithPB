@@ -152,8 +152,7 @@ namespace GbxMapBrowser
 
                 IReadOnlyList<TmxMap> maps = await _trackmaniaExchangeService.GetMappackMapsAsync(campaign.Id);
                 string campaignFolder = GetOfficialCampaignFolder(campaign.Name);
-                HashSet<string> existingMapUids = await Task.Run(() => ScanMapUids(campaignFolder));
-                int downloadedCount = maps.Count(map => !string.IsNullOrWhiteSpace(map.MapUid) && existingMapUids.Contains(map.MapUid));
+                int downloadedCount = await Task.Run(() => GetDownloadedCampaignMapCount(campaignFolder, maps));
 
                 _items.Add(new TrackmaniaExchangeResultItem
                 {
@@ -208,7 +207,7 @@ namespace GbxMapBrowser
 
             item.CampaignMaps = maps;
             item.MapCount = maps.Count;
-            item.DownloadedCount = maps.Count(map => !string.IsNullOrWhiteSpace(map.MapUid) && existingMapUids.Contains(map.MapUid));
+            item.DownloadedCount = await Task.Run(() => GetDownloadedCampaignMapCount(campaignFolder, maps));
             item.Status = GetCampaignStatus(item.DownloadedCount, item.MapCount);
             resultsDataGrid.Items.Refresh();
 
@@ -324,6 +323,45 @@ namespace GbxMapBrowser
             }
 
             return mapUids;
+        }
+
+        private static int GetDownloadedCampaignMapCount(string campaignFolder, IReadOnlyList<TmxMap> maps)
+        {
+            if (maps == null || maps.Count == 0)
+            {
+                return 0;
+            }
+
+            HashSet<string> existingMapUids = ScanMapUids(campaignFolder);
+            int downloadedByUidCount = maps.Count(map =>
+                !string.IsNullOrWhiteSpace(map.MapUid) &&
+                existingMapUids.Contains(map.MapUid)
+            );
+
+            int downloadedByFileCount = CountLocalMapFiles(campaignFolder);
+
+            return Math.Min(maps.Count, Math.Max(downloadedByUidCount, downloadedByFileCount));
+        }
+
+        private static int CountLocalMapFiles(string folder)
+        {
+            if (!Directory.Exists(folder))
+            {
+                return 0;
+            }
+
+            try
+            {
+                return Directory
+                    .EnumerateFiles(folder, "*.Gbx", SearchOption.AllDirectories)
+                    .Count(file =>
+                        file.EndsWith(".Map.Gbx", StringComparison.OrdinalIgnoreCase) ||
+                        file.EndsWith(".Challenge.Gbx", StringComparison.OrdinalIgnoreCase));
+            }
+            catch
+            {
+                return 0;
+            }
         }
 
         private static string GetSafeFolderName(string folderName)

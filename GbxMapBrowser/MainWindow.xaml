@@ -43,7 +43,7 @@
             </Setter>
             <Style.Triggers>
                 <DataTrigger Binding="{Binding IsPaneOpen, ElementName=gamesListMenu}" Value="True">
-                    <Setter Property="Width" Value="270"/>
+                    <Setter Property="Width" Value="248"/>
                 </DataTrigger>
             </Style.Triggers>
         </Style>
@@ -230,7 +230,7 @@
                            Visibility="{Binding IsPaneOpen, ElementName=gamesListMenu, Converter={StaticResource BooleanToVisibilityConverter}}"/>
             </StackPanel>
         </Button>
-        <mah:HamburgerMenu Grid.Row="1" ItemsSource="{Binding GbxGames}" Panel.ZIndex="5" x:Name="gamesListMenu" ItemClick="GamesListMenu_ItemClick" HamburgerButtonName="Maps" HamburgerWidth="48" HamburgerButtonHelpText="Maps" Foreground="{DynamicResource MahApps.Brushes.Text}">
+        <mah:HamburgerMenu Grid.Row="1" ItemsSource="{Binding GbxGames}" Panel.ZIndex="5" x:Name="gamesListMenu" ItemClick="GamesListMenu_ItemClick" HamburgerButtonName="Maps" HamburgerWidth="48" OpenPaneLength="248" HamburgerButtonHelpText="Maps" Foreground="{DynamicResource MahApps.Brushes.Text}">
             <mah:HamburgerMenu.Content>
                 <!--Map list, the right part-->
                 <Grid>
@@ -338,9 +338,19 @@
                         <Label x:Name="pbStatsLabel"
                                Grid.Column="2"
                                Content="PB cache: -"
-                               Style="{StaticResource DefaultUIStyle}"
                                VerticalContentAlignment="Center"
-                               Margin="5 0"/>
+                               Margin="5 0">
+                            <Label.Style>
+                                <Style TargetType="{x:Type Label}" BasedOn="{StaticResource DefaultUIStyle}">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsPaneOpen, ElementName=gamesListMenu}" Value="True">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Label.Style>
+                        </Label>
 
                         <Button x:Name="refreshPbDatabaseButton"
                                 Grid.Column="3"
